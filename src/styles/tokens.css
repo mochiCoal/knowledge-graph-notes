@@ -1,0 +1,112 @@
+/**
+ * 设计令牌：颜色、字体、尺寸、阴影与动效
+ *
+ * 主题由 <html data-theme="light | dark"> 控制：
+ * - 主题状态由 src/stores/theme.ts 统一管理；
+ * - auto 模式在 JS 中解析为 light / dark 后再写入 data-theme；
+ * - 所有页面与组件只引用变量，不写死颜色，保证整体主题一致。
+ */
+
+:root {
+  color-scheme: light;
+
+  /* 字体 */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+
+  /* 背景与表面 */
+  --color-bg: #f2f3f6;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f6f7f9;
+  --color-surface-hover: #eceef2;
+  --color-editor: #ffffff;
+
+  /* 边框与分隔线 */
+  --color-border: #e6e8ec;
+  --color-border-strong: #d5d8de;
+
+  /* 文本 */
+  --color-text: #24262b;
+  --color-text-secondary: #5f636c;
+  --color-text-muted: #8b8f98;
+
+  /* 主题色 */
+  --color-accent: #4f5bd5;
+  --color-accent-strong: #3f49b5;
+  --color-accent-soft: rgba(79, 91, 213, 0.09);
+  --color-accent-contrast: #ffffff;
+  --gradient-brand: linear-gradient(135deg, #5b63e0 0%, #7d6ae8 100%);
+
+  /* 状态色 */
+  --color-success: #2f8f5b;
+  --color-success-soft: rgba(47, 143, 91, 0.12);
+  --color-danger: #c8443f;
+  --color-danger-strong: #b8403b;
+  --color-danger-soft: rgba(200, 68, 63, 0.1);
+
+  /* 代码、引用等 Markdown 元素 */
+  --color-code-bg: #f3f4f7;
+  --color-code-border: #e7e9ee;
+  --color-quote-bg: #f7f8fa;
+
+  /* 遮罩 */
+  --color-overlay: rgba(23, 25, 32, 0.32);
+
+  /* 尺寸 */
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 76px;
+  --header-height: 60px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* 阴影：保持克制，只用于浮层与轻微层级 */
+  --shadow-sm: 0 1px 2px rgba(20, 24, 40, 0.05);
+  --shadow-md: 0 10px 28px -18px rgba(20, 24, 40, 0.35);
+  --shadow-pop: 0 18px 44px -22px rgba(20, 24, 40, 0.45);
+
+  /* 动效 */
+  --transition-fast: 140ms ease;
+  --transition-base: 200ms ease;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #15161a;
+  --color-surface: #1c1e23;
+  --color-surface-soft: #22252b;
+  --color-surface-hover: #282b32;
+  --color-editor: #1e2025;
+
+  --color-border: #2c2f36;
+  --color-border-strong: #3a3e47;
+
+  --color-text: #e5e6ea;
+  --color-text-secondary: #a6aab3;
+  --color-text-muted: #797e88;
+
+  --color-accent: #8f92f2;
+  --color-accent-strong: #a9abf7;
+  --color-accent-soft: rgba(143, 146, 242, 0.14);
+  --color-accent-contrast: #15161a;
+  --gradient-brand: linear-gradient(135deg, #6d74e8 0%, #9a7bf0 100%);
+
+  --color-success: #56c08d;
+  --color-success-soft: rgba(86, 192, 141, 0.15);
+  --color-danger: #ef8b88;
+  --color-danger-strong: #c25a56;
+  --color-danger-soft: rgba(239, 139, 136, 0.14);
+
+  --color-code-bg: #23262c;
+  --color-code-border: #32353d;
+  --color-quote-bg: #202227;
+
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 30px -18px rgba(0, 0, 0, 0.65);
+  --shadow-pop: 0 20px 50px -24px rgba(0, 0, 0, 0.8);
+}
