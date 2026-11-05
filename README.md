@@ -24,13 +24,17 @@
 - ✅ 阶段二：课程管理
   - 课程列表、课程详情、新增 / 编辑 / 删除完整 CRUD
   - 课程名称与描述校验、同名课程拦截、删除级联提示
+- ✅ 阶段三：知识点管理
+  - 多级知识点树、详情面板、新建 / 编辑 / 删除
+  - 层级调整（降为子级 / 提升一级 / 修改父节点），删除时整棵子树级联
+  - 知识点连同子树迁移到其它课程，课程详情与笔记工作区双向联通
 - ✅ 笔记工作区与三档主题系统
   - 课程 / 知识点树形目录，新增课程、新增知识点，宽度拖拽与折叠
   - Markdown 编辑、实时预览、编辑 / 分屏 / 预览三种模式
   - 800ms 自动保存、保存状态提示、切换知识点前落盘、删除二次确认
   - 笔记标签、相关知识点面板，右侧面板可隐藏
   - 自动 / 日间 / 夜间主题，偏好持久化，自动模式跟随系统
-- ⏳ 知识点编辑 / 删除、笔记搜索与导入导出、知识图谱、关联建议等仍待后续阶段
+- ⏳ 笔记搜索与导入导出、知识图谱、关联建议等仍待后续阶段
 
 完整任务清单见 [task.md](./task.md)。
 
@@ -54,6 +58,10 @@ knowledge-graph-notes/
 │  │  ├─ layout/                AppLayout / AppHeader / AppSidebar / TitleBar / WindowResizeHandles
 │  │  ├─ common/                AppIcon / PageHeader / PlaceholderPanel / BaseModal / ConfirmDialog / ThemeSwitcher
 │  │  ├─ courses/               CourseFormDialog（课程管理页与笔记页共用）
+│  │  ├─ knowledge/             知识点管理组件
+│  │  │  ├─ KnowledgePointTree.vue         递归知识点树
+│  │  │  ├─ KnowledgePointFormDialog.vue   新建 / 编辑知识点弹窗
+│  │  │  └─ KnowledgePointDetailPanel.vue  知识点详情、层级调整与课程迁移
 │  │  └─ notes/                 笔记工作区组件
 │  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度）
 │  │     ├─ KnowledgeTreeNode.vue   递归知识点树
@@ -61,17 +69,19 @@ knowledge-graph-notes/
 │  │     ├─ NoteMetaPanel.vue       所属知识点、标签、相关知识点
 │  │     ├─ SaveStatusIndicator.vue 保存状态
 │  │     └─ KnowledgePointFormDialog.vue 新建知识点弹窗
-│  ├─ views/                    首页、课程、课程详情、笔记、图谱、设置、404
+│  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、图谱、设置、404
 │  ├─ router/                   路由表（meta 驱动导航 / 沉浸式页面）
 │  ├─ stores/
 │  │  ├─ app.ts                 应用级界面状态（侧边栏折叠）
 │  │  ├─ theme.ts               主题状态（唯一管理入口）
 │  │  ├─ courses.ts             课程列表与增删改查
+│  │  ├─ knowledgePoints.ts     知识点树、详情与增删改查
 │  │  ├─ notes.ts               笔记数据、草稿、自动保存
 │  │  └─ workspace.ts           笔记页布局偏好（宽度、面板、视图模式）
 │  ├─ services/
 │  │  ├─ tauri.ts               invoke 统一封装与错误类型
 │  │  ├─ courses.ts             课程 CRUD API
+│  │  ├─ knowledgePoints.ts     知识点树 / 详情 / 增删改查 / 层级调整 API
 │  │  ├─ notes.ts               知识点 / 笔记 / 标签 / 关联 API
 │  │  └─ theme.ts               主题读取、解析、持久化
 │  ├─ utils/                    Markdown 渲染、时间与字数格式化
@@ -136,8 +146,20 @@ knowledge-graph-notes/
 - 列表展示课程名称、描述、知识点 / 笔记数量与最近更新时间，并提供详情、编辑、删除入口；
 - 新建与编辑复用同一个弹窗；课程名称必填（≤60 字）、描述可选（≤500 字），后端会再次校验并拒绝同名课程；
 - 删除前二次确认，并明确提示课程下的知识点、笔记、标签关联与知识点关联会级联删除；
-- 详情页展示课程简介、知识点结构（只读）以及笔记工作区 / 知识图谱入口，可直接编辑或删除课程；
+- 详情页展示课程简介、知识点结构（可跳转到知识点管理并选中对应知识点）以及笔记工作区 / 知识图谱入口，可直接编辑或删除课程；
 - 课程变更后进入笔记工作区会强制刷新目录；若当前选中的知识点已被删除，会自动清理失效状态，避免草稿写回已删除的数据。
+
+## 知识点管理
+
+`/knowledge-points` 按课程维护多级知识点目录，也可以从课程详情页带上课程 / 知识点参数直接进入：
+
+- 左栏切换课程并显示每门课程的知识点数；中栏显示当前课程的知识点树（层级缩进、子项数与笔记数）；
+- 顶部或行内 `+` 新建知识点，可指定父知识点；行内可直接编辑 / 删除；
+- 右侧详情面板展示面包屑路径、层级、子知识点 / 后代 / 笔记统计、描述与创建 / 更新时间；
+- 层级调整：「降为子级」成为同级上一个知识点的子知识点，「提升一级」与父知识点同级；也可以在编辑弹窗中直接修改父节点；
+- 删除知识点会连同全部后代知识点及其笔记、相关关联一起删除，确认框会给出准确数量；
+- 迁移课程会把知识点连同子树移动到另一门课程，根节点自动成为目标课程的顶层知识点；
+- 「在笔记中打开」跳转到笔记工作区并选中该知识点，方便继续编写笔记。
 
 ## 页面切换
 
@@ -184,12 +206,12 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 | 模块 | 命令 |
 | --- | --- |
 | 课程 | `list_courses` / `get_course` / `create_course` / `update_course` / `delete_course` |
-| 知识点 | `list_knowledge_points` / `create_knowledge_point` |
+| 知识点 | `list_knowledge_points` / `list_knowledge_points_by_course` / `get_knowledge_point_tree` / `get_knowledge_point_detail` / `create_knowledge_point` / `update_knowledge_point` / `move_knowledge_point` / `move_knowledge_point_to_course` / `delete_knowledge_point` |
 | 笔记 | `get_note` / `save_note` / `delete_note` |
 | 标签 | `list_tags` / `create_tag` / `list_note_tags` / `attach_note_tag` / `detach_note_tag` |
 | 关联 | `list_relations` |
 
-课程命令已具备完整 CRUD 与后端校验；知识点编辑 / 删除、笔记搜索与导入导出属于后续阶段。
+课程与知识点命令已具备完整 CRUD、后端校验与层级保护；笔记搜索与导入导出属于后续阶段。
 
 ## 数据库
 

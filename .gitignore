@@ -27,3 +27,6 @@ dist-ssr
 shots/
 .chrome-profile*/
 
+# DSH 沙箱文件权限诊断产物（仅本机保留，用于回滚权限改动）
+.acl-recovery/
+

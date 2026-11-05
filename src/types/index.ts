@@ -30,6 +30,54 @@ export interface KnowledgePoint {
   updated_at: string
 }
 
+/**
+ * 知识点树节点（后端 `get_knowledge_point_tree` 返回）
+ *
+ * 后端使用 serde flatten 展开，因此字段与 KnowledgePoint 完全一致，
+ * 另外附带层级深度、子节点 / 笔记数量与 children。
+ */
+export interface KnowledgePointNode extends KnowledgePoint {
+  /** 层级深度，顶层为 0 */
+  depth: number
+  /** 直接子知识点数量 */
+  child_count: number
+  /** 直接挂在该知识点上的笔记数量（不含后代） */
+  note_count: number
+  children: KnowledgePointNode[]
+}
+
+/** 知识点详情面包屑中的单个节点 */
+export interface KnowledgePointPathItem {
+  id: string
+  title: string
+}
+
+/** 知识点详情（后端 `get_knowledge_point_detail` 返回） */
+export interface KnowledgePointDetail {
+  point: KnowledgePoint
+  course_name: string
+  /** 从顶层知识点到当前知识点的完整路径 */
+  path: KnowledgePointPathItem[]
+  /** 当前层级，顶层为 0 */
+  depth: number
+  /** 直接子知识点数量 */
+  child_count: number
+  /** 全部后代知识点数量（不含自身） */
+  descendant_count: number
+  /** 直接挂在该知识点上的笔记数量 */
+  note_count: number
+  /** 自身及全部后代的笔记数量 */
+  subtree_note_count: number
+}
+
+/** 删除知识点的结果（后端 `delete_knowledge_point` 返回） */
+export interface KnowledgePointDeletion {
+  /** 删除的知识点数量（含自身与全部后代） */
+  deleted_points: number
+  /** 随之级联删除的笔记数量 */
+  deleted_notes: number
+}
+
 /** 笔记（属于某个知识点） */
 export interface Note {
   id: string

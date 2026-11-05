@@ -244,27 +244,34 @@ async function confirmDelete(): Promise<void> {
             知识点结构
             <span class="count-badge">{{ points.length }}</span>
           </h2>
-          <span>阶段三将支持在此维护知识点</span>
+          <RouterLink :to="`/knowledge-points/${courseId}`" class="text-link">
+            管理知识点
+          </RouterLink>
         </header>
 
         <ul v-if="flatPoints.length" class="point-list">
-          <li
-            v-for="{ point, depth } in flatPoints"
-            :key="point.id"
-            class="point-row"
-            :style="{ paddingLeft: `${18 + depth * 18}px` }"
-          >
-            <span class="point-row__dot" aria-hidden="true" />
-            <span class="point-row__title">{{ point.title }}</span>
-            <span v-if="point.description" class="point-row__desc">
-              {{ point.description }}
-            </span>
+          <li v-for="{ point, depth } in flatPoints" :key="point.id" class="point-item">
+            <RouterLink
+              :to="{ path: `/knowledge-points/${courseId}`, query: { point: point.id } }"
+              class="point-row"
+              :style="{ paddingLeft: `${18 + depth * 18}px` }"
+              :title="`在知识点管理中查看「${point.title}」`"
+            >
+              <span class="point-row__dot" aria-hidden="true" />
+              <span class="point-row__title">{{ point.title }}</span>
+              <span v-if="point.description" class="point-row__desc">
+                {{ point.description }}
+              </span>
+              <AppIcon name="arrow-right" :size="14" class="point-row__arrow" />
+            </RouterLink>
           </li>
         </ul>
 
         <div v-else class="point-empty">
           <p>这门课程还没有知识点。</p>
-          <RouterLink to="/notes" class="text-link">前往笔记工作区创建第一个知识点</RouterLink>
+          <RouterLink :to="`/knowledge-points/${courseId}`" class="text-link">
+            前往知识点管理创建第一个知识点
+          </RouterLink>
         </div>
       </section>
 
@@ -443,11 +450,38 @@ async function confirmDelete(): Promise<void> {
   padding-bottom: 7px;
   color: var(--color-text-secondary);
   font-size: 12.5px;
+  transition: background-color var(--transition-fast);
+}
+
+.point-item {
   border-top: 1px solid var(--color-border);
 }
 
-.point-list .point-row:first-child {
+.point-item:first-child {
   border-top: none;
+}
+
+.point-row:hover {
+  background: var(--color-surface-hover);
+}
+
+.point-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.point-row__arrow {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.point-row:hover .point-row__arrow {
+  color: var(--color-accent);
+  opacity: 1;
 }
 
 .point-row__dot {

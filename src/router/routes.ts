@@ -34,22 +34,29 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/knowledge-points/:courseId?',
+    name: 'knowledge-points',
+    component: () => import('@/views/KnowledgePointsView.vue'),
+    props: true,
+    meta: { title: '知识点管理', icon: 'tree', nav: true, order: 3 },
+  },
+  {
     path: '/notes',
     name: 'notes',
     component: () => import('@/views/NotesView.vue'),
-    meta: { title: '笔记', icon: 'notes', nav: true, order: 3, immersive: true },
+    meta: { title: '笔记', icon: 'notes', nav: true, order: 4, immersive: true },
   },
   {
     path: '/graph',
     name: 'graph',
     component: () => import('@/views/GraphView.vue'),
-    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 4 },
+    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 5 },
   },
   {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
-    meta: { title: '设置', icon: 'settings', nav: true, order: 5 },
+    meta: { title: '设置', icon: 'settings', nav: true, order: 6 },
   },
   {
     path: '/:pathMatch(.*)*',

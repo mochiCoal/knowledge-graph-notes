@@ -31,6 +31,12 @@ const entries: EntryCard[] = [
     icon: 'courses',
   },
   {
+    title: '知识点管理',
+    description: '为课程建立多级知识点目录，调整层级与归属课程。',
+    path: '/knowledge-points',
+    icon: 'tree',
+  },
+  {
     title: '笔记编辑',
     description: '在知识点下编写 Markdown 笔记，支持实时预览。',
     path: '/notes',
@@ -99,9 +105,9 @@ const entries: EntryCard[] = [
     </section>
 
     <section class="notice">
-      <strong>课程管理与笔记工作区已可用</strong>
+      <strong>课程管理、知识点管理与笔记工作区已可用</strong>
       <span>
-        课程增删改查、课程详情、课程与知识点目录、Markdown 编辑与分屏预览、自动保存、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
+        课程增删改查、课程详情、多级知识点目录（增删改查 / 层级调整 / 课程迁移）、Markdown 编辑与分屏预览、自动保存、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
       </span>
     </section>
   </div>

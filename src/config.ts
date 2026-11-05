@@ -15,4 +15,4 @@ export const APP_TAGLINE = '课程 · 知识点 · 笔记'
 export const APP_VERSION = '0.1.0'
 
 /** 当前开发阶段，随任务清单推进更新 */
-export const DEVELOPMENT_STAGE = '阶段一 · 项目基础架构'
+export const DEVELOPMENT_STAGE = '阶段三 · 知识点管理'
