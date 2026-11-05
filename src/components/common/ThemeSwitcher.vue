@@ -6,7 +6,7 @@ import { useThemeStore } from '@/stores/theme'
 
 withDefaults(
   defineProps<{
-    /** 是否显示文字标签（设置页使用，顶栏使用图标模式） */
+    /** 是否显示文字标签（目前仅在设置页使用，统一显示文字标签） */
     showLabels?: boolean
   }>(),
   {

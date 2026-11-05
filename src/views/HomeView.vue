@@ -18,7 +18,7 @@ interface EntryCard {
 }
 
 const stats: StatCard[] = [
-  { label: '课程', value: '—', hint: '阶段二接入', icon: 'courses' },
+  { label: '课程', value: '—', hint: '阶段八接入', icon: 'courses' },
   { label: '知识点', value: '—', hint: '阶段三接入', icon: 'graph' },
   { label: '笔记', value: '—', hint: '阶段四接入', icon: 'notes' },
 ]
@@ -99,9 +99,9 @@ const entries: EntryCard[] = [
     </section>
 
     <section class="notice">
-      <strong>笔记工作区已可用</strong>
+      <strong>课程管理与笔记工作区已可用</strong>
       <span>
-        课程与知识点目录、Markdown 编辑与分屏预览、自动保存、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
+        课程增删改查、课程详情、课程与知识点目录、Markdown 编辑与分屏预览、自动保存、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
       </span>
     </section>
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
@@ -12,37 +12,44 @@ const contentRef = ref<HTMLElement | null>(null)
 const isImmersive = computed(() => route.meta.immersive === true)
 
 /**
+ * 实际生效的沉浸式布局。
+ *
+ * 路由变化时如果立刻切换 padding / 侧边栏，正在淡出的旧页面会突然收缩，
+ * 因此这里把布局切换推迟到旧页面离场之后、新页面以 opacity: 0 插入的瞬间。
+ */
+const appliedImmersive = ref(isImmersive.value)
+
+/**
  * 笔记页等沉浸式页面默认收起应用级导航，把宽度留给三栏工作区。
  * 离开时恢复进入前的状态；如果用户手动展开过，则尊重用户的选择。
  */
 let sidebarBeforeImmersive: boolean | null = null
 
-watch(
-  isImmersive,
-  (immersive) => {
-    if (immersive) {
-      sidebarBeforeImmersive = appStore.sidebarCollapsed
-      appStore.setSidebarCollapsed(true)
-      return
-    }
+function applyRouteLayout(): void {
+  const immersive = isImmersive.value
+  appliedImmersive.value = immersive
 
-    if (sidebarBeforeImmersive === null) return
+  if (immersive) {
+    sidebarBeforeImmersive = appStore.sidebarCollapsed
+    appStore.setSidebarCollapsed(true)
+    return
+  }
 
-    if (appStore.sidebarCollapsed) {
-      appStore.setSidebarCollapsed(sidebarBeforeImmersive)
-    }
-    sidebarBeforeImmersive = null
-  },
-  { immediate: true },
-)
+  if (sidebarBeforeImmersive === null) return
 
-/** 路由切换后把内容区滚动回顶部（内容区独立滚动） */
-watch(
-  () => route.fullPath,
-  () => {
-    contentRef.value?.scrollTo({ top: 0 })
-  },
-)
+  if (appStore.sidebarCollapsed) {
+    appStore.setSidebarCollapsed(sidebarBeforeImmersive)
+  }
+  sidebarBeforeImmersive = null
+}
+
+// 首屏没有路由过渡，直接应用一次布局
+applyRouteLayout()
+
+/** 旧页面已离场：先把滚动位置归零，再让新页面从顶部进入 */
+function handleBeforeEnter(): void {
+  contentRef.value?.scrollTo({ top: 0 })
+}
 </script>
 
 <template>
@@ -55,14 +62,19 @@ watch(
       <main
         ref="contentRef"
         class="app-content"
-        :class="{ 'app-content--flush': isImmersive }"
+        :class="{ 'app-content--flush': appliedImmersive }"
       >
         <div
           class="app-content__inner"
-          :class="{ 'app-content__inner--flush': isImmersive }"
+          :class="{ 'app-content__inner--flush': appliedImmersive }"
         >
           <RouterView v-slot="{ Component, route: currentRoute }">
-            <Transition name="page" mode="out-in">
+            <Transition
+              name="page"
+              mode="out-in"
+              @before-enter="handleBeforeEnter"
+              @enter="applyRouteLayout"
+            >
               <component :is="Component" :key="currentRoute.path" />
             </Transition>
           </RouterView>

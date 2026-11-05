@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
-import ThemeSwitcher from '@/components/common/ThemeSwitcher.vue'
 import { useAppStore } from '@/stores/app'
 
 interface Crumb {
@@ -56,10 +55,6 @@ const collapseLabel = computed(() => (sidebarCollapsed.value ? '展开侧边栏'
         <span v-else class="breadcrumb__current">{{ crumb.title }}</span>
       </template>
     </nav>
-
-    <div class="app-header__actions">
-      <ThemeSwitcher />
-    </div>
   </header>
 </template>
 
@@ -107,10 +102,4 @@ const collapseLabel = computed(() => (sidebarCollapsed.value ? '展开侧边栏'
   text-overflow: ellipsis;
 }
 
-.app-header__actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-left: auto;
-}
 </style>

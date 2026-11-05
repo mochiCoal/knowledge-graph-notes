@@ -1,5 +1,5 @@
 import { invokeCommand } from './tauri'
-import type { Course, KnowledgePoint, KnowledgeRelation, Note, Tag } from '@/types'
+import type { KnowledgePoint, KnowledgeRelation, Note, Tag } from '@/types'
 
 /** 新建知识点入参 */
 export interface CreateKnowledgePointInput {
@@ -24,11 +24,6 @@ export interface SaveNoteInput {
  * 因此这里调用时统一使用 camelCase 参数。
  */
 export const notesApi = {
-  listCourses: () => invokeCommand<Course[]>('list_courses'),
-
-  createCourse: (name: string, description: string) =>
-    invokeCommand<Course>('create_course', { name, description }),
-
   listKnowledgePoints: () => invokeCommand<KnowledgePoint[]>('list_knowledge_points'),
 
   createKnowledgePoint: (input: CreateKnowledgePointInput) =>

@@ -12,6 +12,10 @@ export interface Course {
   description: string
   created_at: string
   updated_at: string
+  /** 课程下的知识点数量（后端聚合返回） */
+  knowledge_point_count: number
+  /** 课程下的笔记数量（后端聚合返回） */
+  note_count: number
 }
 
 /** 知识点（通过 parent_id 形成层级结构） */

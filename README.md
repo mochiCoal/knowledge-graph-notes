@@ -21,13 +21,16 @@
 - ✅ 开发环境、Tauri 项目初始化
 - ✅ SQLite 表结构设计与数据库自动初始化
 - ✅ 阶段一：项目基础架构（目录结构、Vue Router、Pinia、整体布局、左侧导航、路由切换）
+- ✅ 阶段二：课程管理
+  - 课程列表、课程详情、新增 / 编辑 / 删除完整 CRUD
+  - 课程名称与描述校验、同名课程拦截、删除级联提示
 - ✅ 笔记工作区与三档主题系统
   - 课程 / 知识点树形目录，新增课程、新增知识点，宽度拖拽与折叠
   - Markdown 编辑、实时预览、编辑 / 分屏 / 预览三种模式
   - 800ms 自动保存、保存状态提示、切换知识点前落盘、删除二次确认
   - 笔记标签、相关知识点面板，右侧面板可隐藏
   - 自动 / 日间 / 夜间主题，偏好持久化，自动模式跟随系统
-- ⏳ 课程与知识点的编辑 / 删除、课程管理页面、笔记搜索与导入导出、知识图谱、关联建议等仍待后续阶段
+- ⏳ 知识点编辑 / 删除、笔记搜索与导入导出、知识图谱、关联建议等仍待后续阶段
 
 完整任务清单见 [task.md](./task.md)。
 
@@ -50,23 +53,26 @@ knowledge-graph-notes/
 │  ├─ components/
 │  │  ├─ layout/                AppLayout / AppHeader / AppSidebar / TitleBar / WindowResizeHandles
 │  │  ├─ common/                AppIcon / PageHeader / PlaceholderPanel / BaseModal / ConfirmDialog / ThemeSwitcher
+│  │  ├─ courses/               CourseFormDialog（课程管理页与笔记页共用）
 │  │  └─ notes/                 笔记工作区组件
 │  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度）
 │  │     ├─ KnowledgeTreeNode.vue   递归知识点树
 │  │     ├─ NoteWorkspace.vue       标题、编辑 / 分屏 / 预览、保存状态
 │  │     ├─ NoteMetaPanel.vue       所属知识点、标签、相关知识点
 │  │     ├─ SaveStatusIndicator.vue 保存状态
-│  │     └─ *FormDialog.vue         新建课程 / 知识点弹窗
+│  │     └─ KnowledgePointFormDialog.vue 新建知识点弹窗
 │  ├─ views/                    首页、课程、课程详情、笔记、图谱、设置、404
 │  ├─ router/                   路由表（meta 驱动导航 / 沉浸式页面）
 │  ├─ stores/
 │  │  ├─ app.ts                 应用级界面状态（侧边栏折叠）
 │  │  ├─ theme.ts               主题状态（唯一管理入口）
+│  │  ├─ courses.ts             课程列表与增删改查
 │  │  ├─ notes.ts               笔记数据、草稿、自动保存
 │  │  └─ workspace.ts           笔记页布局偏好（宽度、面板、视图模式）
 │  ├─ services/
 │  │  ├─ tauri.ts               invoke 统一封装与错误类型
-│  │  ├─ notes.ts               课程 / 知识点 / 笔记 / 标签 / 关联 API
+│  │  ├─ courses.ts             课程 CRUD API
+│  │  ├─ notes.ts               知识点 / 笔记 / 标签 / 关联 API
 │  │  └─ theme.ts               主题读取、解析、持久化
 │  ├─ utils/                    Markdown 渲染、时间与字数格式化
 │  ├─ types/                    领域模型、RouteMeta 扩展
@@ -107,7 +113,7 @@ knowledge-graph-notes/
 
 ## 主题系统
 
-三种模式：**自动 / 日间 / 夜间**，入口在顶部工具栏和「设置 → 外观」。
+三种模式：**自动 / 日间 / 夜间**，入口只在「设置 → 外观」，其它页面不显示切换控件。
 
 - 状态集中在 [`src/stores/theme.ts`](src/stores/theme.ts)，所有组件只读取这个 store，不各自处理主题；
 - 颜色定义在 [`src/styles/tokens.css`](src/styles/tokens.css) 的 `:root`（日间）与 `:root[data-theme='dark']`（夜间）；
@@ -118,10 +124,27 @@ knowledge-graph-notes/
 
 ### 手动验证主题
 
-1. 顶部工具栏切换自动 / 日间 / 夜间，界面立即变化，按钮高亮同步；
-2. 进入「设置 → 外观」，可以看到同一组主题选项和当前模式说明；
+1. 进入「设置 → 外观」，切换自动 / 日间 / 夜间，界面立即变化，按钮高亮同步；
+2. 首页、课程、笔记等其它页面不再出现主题切换入口；
 3. 选择「自动」后，在 Windows 设置 → 个性化 → 颜色 中切换浅色 / 深色，应用会跟随变化；
 4. 重启应用后仍保留上次选择（`localStorage` 持久化）。
+
+## 课程管理
+
+`/courses` 提供课程的完整增删改查，所有数据直接写入本地 SQLite：
+
+- 列表展示课程名称、描述、知识点 / 笔记数量与最近更新时间，并提供详情、编辑、删除入口；
+- 新建与编辑复用同一个弹窗；课程名称必填（≤60 字）、描述可选（≤500 字），后端会再次校验并拒绝同名课程；
+- 删除前二次确认，并明确提示课程下的知识点、笔记、标签关联与知识点关联会级联删除；
+- 详情页展示课程简介、知识点结构（只读）以及笔记工作区 / 知识图谱入口，可直接编辑或删除课程；
+- 课程变更后进入笔记工作区会强制刷新目录；若当前选中的知识点已被删除，会自动清理失效状态，避免草稿写回已删除的数据。
+
+## 页面切换
+
+- 首屏空闲时预取所有懒加载页面模块，点击导航后不再等待 JS 分块下载；
+- 页面切换为 90ms 淡出 + 150ms 淡入，避免长时间空白；
+- 笔记页的沉浸式布局（隐藏应用侧边栏、去掉内容区留白）在旧页面离场后一次性切换，旧页面不会在淡出时突然收缩；
+- 内容区滚动位置在新页面进入时归零，旧页面保持原位置平滑退出。
 
 ## 笔记工作区
 
@@ -156,17 +179,17 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 
 ## 后端命令
 
-为支撑笔记页的真实数据读写，新增了以下命令（**未修改数据库结构**，数据库仍使用 `001_initial.sql`）：
+为支撑课程管理与笔记工作区的真实数据读写，当前注册的命令如下（**未修改数据库结构**，数据库仍使用 `001_initial.sql`）：
 
 | 模块 | 命令 |
 | --- | --- |
-| 课程 | `list_courses` / `create_course` |
+| 课程 | `list_courses` / `get_course` / `create_course` / `update_course` / `delete_course` |
 | 知识点 | `list_knowledge_points` / `create_knowledge_point` |
 | 笔记 | `get_note` / `save_note` / `delete_note` |
 | 标签 | `list_tags` / `create_tag` / `list_note_tags` / `attach_note_tag` / `detach_note_tag` |
 | 关联 | `list_relations` |
 
-课程、知识点的编辑与删除属于阶段二 / 阶段三的完整 CRUD，尚未实现。
+课程命令已具备完整 CRUD 与后端校验；知识点编辑 / 删除、笔记搜索与导入导出属于后续阶段。
 
 ## 数据库
 

@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { coursesApi } from '@/services/courses'
 import { notesApi, type CreateKnowledgePointInput } from '@/services/notes'
 import type {
   Course,
@@ -164,7 +165,7 @@ export const useNotesStore = defineStore('notes', () => {
 
   async function loadWorkspaceData(): Promise<void> {
     const [courseList, pointList, relationList, tagList] = await Promise.all([
-      notesApi.listCourses(),
+      coursesApi.list(),
       notesApi.listKnowledgePoints(),
       notesApi.listRelations(),
       notesApi.listTags(),
@@ -187,15 +188,45 @@ export const useNotesStore = defineStore('notes', () => {
     try {
       await loadWorkspaceData()
 
+      // 课程 / 知识点可能在课程管理页被删除：丢弃已失效的选中状态，
+      // 避免把草稿保存回已经删除的知识点。
+      if (selectedPointId.value && !pointById(selectedPointId.value)) {
+        clearSelection()
+      }
+
       const lastPoint = pointById(readLastPointId())
       const target = lastPoint ?? knowledgePoints.value[0] ?? null
       if (target) {
         await selectPoint(target.id)
+      } else {
+        clearSelection()
+        persistLastPointId(null)
       }
     } catch (error) {
       errorMessage.value = errorText(error)
     } finally {
       isLoading.value = false
+    }
+  }
+
+  /** 静默刷新目录数据（课程管理页可能新增 / 改名 / 删除课程与知识点） */
+  async function refreshCatalog(): Promise<void> {
+    try {
+      await loadWorkspaceData()
+
+      const current = selectedPointId.value ? pointById(selectedPointId.value) : null
+      if (current) return
+
+      // 选中的知识点已不存在：清理草稿状态，切到第一个可用知识点
+      clearSelection()
+      const target = knowledgePoints.value[0] ?? null
+      if (target) {
+        await selectPoint(target.id)
+      } else {
+        persistLastPointId(null)
+      }
+    } catch (error) {
+      errorMessage.value = errorText(error)
     }
   }
 
@@ -374,6 +405,17 @@ export const useNotesStore = defineStore('notes', () => {
     return saveStatus.value !== 'error'
   }
 
+  /** 清空当前编辑器状态（选中的知识点被删除时使用） */
+  function clearSelection(): void {
+    selectedPointId.value = null
+    note.value = null
+    noteTags.value = []
+    draft.title = ''
+    draft.content = ''
+    saveStatus.value = 'idle'
+    lastSavedAt.value = null
+  }
+
   async function deleteCurrentNote(): Promise<void> {
     const target = note.value
     if (!target) return
@@ -389,10 +431,10 @@ export const useNotesStore = defineStore('notes', () => {
     lastSavedAt.value = null
   }
 
-  async function createCourse(name: string, description: string): Promise<Course> {
-    const course = await notesApi.createCourse(name, description)
+  /** 在笔记页新建课程后同步目录（课程表单由课程管理模块统一提供） */
+  function addCourse(course: Course): void {
+    if (courses.value.some((item) => item.id === course.id)) return
     courses.value = [...courses.value, course]
-    return course
   }
 
   async function createKnowledgePoint(
@@ -462,15 +504,17 @@ export const useNotesStore = defineStore('notes', () => {
     isLoading,
     isLoadingNote,
     errorMessage,
+    initialized,
     // 行为
     initialize,
+    refreshCatalog,
     selectPoint,
     updateTitle,
     updateContent,
     saveNow,
     flushSave,
     deleteCurrentNote,
-    createCourse,
+    addCourse,
     createKnowledgePoint,
     addTagToNote,
     removeTagFromNote,

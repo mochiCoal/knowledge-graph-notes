@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
-import CourseFormDialog from './CourseFormDialog.vue'
+import CourseFormDialog from '@/components/courses/CourseFormDialog.vue'
 import KnowledgePointFormDialog from './KnowledgePointFormDialog.vue'
 import KnowledgeTreeNode from './KnowledgeTreeNode.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useWorkspaceStore } from '@/stores/workspace'
+import type { Course } from '@/types'
 
 const notes = useNotesStore()
 const workspace = useWorkspaceStore()
@@ -37,6 +38,11 @@ function toggleCourse(courseId: string): void {
 
 function openCourseDialog(): void {
   courseDialogOpen.value = true
+}
+
+/** 课程表单由课程管理模块共享，创建成功后同步到笔记目录 */
+function onCourseSaved(course: Course): void {
+  notes.addCourse(course)
 }
 
 function openPointDialog(courseId?: string, parentId?: string): void {
@@ -195,7 +201,11 @@ onBeforeUnmount(() => {
       @pointerdown="startResize"
     />
 
-    <CourseFormDialog :open="courseDialogOpen" @close="courseDialogOpen = false" />
+    <CourseFormDialog
+      :open="courseDialogOpen"
+      @close="courseDialogOpen = false"
+      @saved="onCourseSaved"
+    />
     <KnowledgePointFormDialog
       :open="pointDialogOpen"
       :course-id="pointDialogCourseId"

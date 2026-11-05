@@ -20,7 +20,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::course::list_courses,
+            commands::course::get_course,
             commands::course::create_course,
+            commands::course::update_course,
+            commands::course::delete_course,
             commands::knowledge_point::list_knowledge_points,
             commands::knowledge_point::create_knowledge_point,
             commands::note::get_note,

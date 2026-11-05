@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { useNotesStore } from '@/stores/notes'
+import { useCoursesStore } from '@/stores/courses'
+import type { Course } from '@/types'
 
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: [] }>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    /** 传入课程表示编辑，为空表示新建 */
+    course?: Course | null
+  }>(),
+  {
+    course: null,
+  },
+)
 
-const notes = useNotesStore()
+const emit = defineEmits<{
+  close: []
+  saved: [course: Course]
+}>()
+
+const courses = useCoursesStore()
 
 const name = ref('')
 const description = ref('')
@@ -14,13 +28,20 @@ const errorMessage = ref('')
 const submitting = ref(false)
 const nameInput = ref<HTMLInputElement | null>(null)
 
+const isEditing = computed(() => props.course !== null)
+const title = computed(() => (isEditing.value ? '编辑课程' : '新建课程'))
+const submitLabel = computed(() => {
+  if (submitting.value) return isEditing.value ? '保存中…' : '创建中…'
+  return isEditing.value ? '保存修改' : '创建课程'
+})
+
 watch(
-  () => props.open,
-  (open) => {
+  [() => props.open, () => props.course?.id],
+  ([open]) => {
     if (!open) return
 
-    name.value = ''
-    description.value = ''
+    name.value = props.course?.name ?? ''
+    description.value = props.course?.description ?? ''
     errorMessage.value = ''
     submitting.value = false
     void nextTick(() => nameInput.value?.focus())
@@ -30,11 +51,27 @@ watch(
 async function submit(): Promise<void> {
   if (submitting.value) return
 
+  const trimmedName = name.value.trim()
+  if (!trimmedName) {
+    errorMessage.value = '课程名称不能为空'
+    return
+  }
+
   errorMessage.value = ''
   submitting.value = true
 
   try {
-    await notes.createCourse(name.value, description.value)
+    const saved = props.course
+      ? await courses.updateCourse(props.course.id, {
+          name: trimmedName,
+          description: description.value,
+        })
+      : await courses.createCourse({
+          name: trimmedName,
+          description: description.value,
+        })
+
+    emit('saved', saved)
     emit('close')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : String(error)
@@ -45,7 +82,7 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <BaseModal :open="open" title="新建课程" @close="emit('close')">
+  <BaseModal :open="open" :title="title" @close="emit('close')">
     <form id="course-form" class="form-stack" @submit.prevent="submit">
       <label class="field">
         <span class="field__label">课程名称</span>
@@ -62,7 +99,7 @@ async function submit(): Promise<void> {
       <label class="field">
         <span class="field__label">
           课程描述
-          <span class="field__hint">可选</span>
+          <span class="field__hint">可选，最多 500 字</span>
         </span>
         <textarea
           v-model="description"
@@ -84,7 +121,7 @@ async function submit(): Promise<void> {
         class="primary-button"
         :disabled="submitting || !name.trim()"
       >
-        {{ submitting ? '创建中…' : '创建课程' }}
+        {{ submitLabel }}
       </button>
     </template>
   </BaseModal>

@@ -10,7 +10,13 @@ const notes = useNotesStore()
 const workspace = useWorkspaceStore()
 
 onMounted(() => {
-  void notes.initialize()
+  // 课程管理页可能改动课程 / 知识点：已初始化时静默刷新目录，
+  // 首次进入才显示加载状态。
+  if (notes.initialized) {
+    void notes.refreshCatalog()
+  } else {
+    void notes.initialize()
+  }
 })
 
 onBeforeUnmount(() => {

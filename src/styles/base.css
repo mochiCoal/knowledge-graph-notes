@@ -327,22 +327,24 @@ code {
   }
 }
 
-/* 页面切换动画 */
-.page-enter-active,
-.page-leave-active {
+/* 页面切换动画：先快速淡出，再淡入新页面，避免长时间空白 */
+.page-enter-active {
   transition:
-    opacity var(--transition-base),
-    transform var(--transition-base);
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.page-leave-active {
+  transition: opacity 90ms ease;
 }
 
 .page-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(6px);
 }
 
 .page-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
 }
 
 @media (prefers-reduced-motion: reduce) {
