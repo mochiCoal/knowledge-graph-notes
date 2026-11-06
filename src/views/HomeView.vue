@@ -43,6 +43,12 @@ const entries: EntryCard[] = [
     icon: 'notes',
   },
   {
+    title: '笔记库',
+    description: '检索全部笔记，导入本地 Markdown 或导出为 .md。',
+    path: '/note-library',
+    icon: 'library',
+  },
+  {
     title: '知识图谱',
     description: '以交互图谱查看知识点之间的语义关联。',
     path: '/graph',
@@ -105,9 +111,9 @@ const entries: EntryCard[] = [
     </section>
 
     <section class="notice">
-      <strong>课程管理、知识点管理与笔记工作区已可用</strong>
+      <strong>课程、知识点与 Markdown 笔记模块已可用</strong>
       <span>
-        课程增删改查、课程详情、多级知识点目录（增删改查 / 层级调整 / 课程迁移）、Markdown 编辑与分屏预览、自动保存、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
+        课程增删改查、多级知识点目录（层级调整 / 课程迁移）、Markdown 编辑与分屏预览、自动保存、笔记检索、Markdown 导入导出、标签以及三档主题切换均已接入；其余模块将在后续阶段完成。
       </span>
     </section>
   </div>

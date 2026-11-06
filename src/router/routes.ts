@@ -47,16 +47,22 @@ export const routes: RouteRecordRaw[] = [
     meta: { title: '笔记', icon: 'notes', nav: true, order: 4, immersive: true },
   },
   {
+    path: '/note-library',
+    name: 'note-library',
+    component: () => import('@/views/NoteLibraryView.vue'),
+    meta: { title: '笔记库', icon: 'library', nav: true, order: 5 },
+  },
+  {
     path: '/graph',
     name: 'graph',
     component: () => import('@/views/GraphView.vue'),
-    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 5 },
+    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 6 },
   },
   {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
-    meta: { title: '设置', icon: 'settings', nav: true, order: 6 },
+    meta: { title: '设置', icon: 'settings', nav: true, order: 7 },
   },
   {
     path: '/:pathMatch(.*)*',

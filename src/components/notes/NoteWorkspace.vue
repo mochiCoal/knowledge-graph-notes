@@ -2,8 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import MarkdownImportDialog from './MarkdownImportDialog.vue'
 import SaveStatusIndicator from './SaveStatusIndicator.vue'
 import type { IconName } from '@/components/common/icons'
+import { exportNoteToMarkdown } from '@/services/markdownFiles'
 import { useNotesStore } from '@/stores/notes'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { renderMarkdown } from '@/utils/markdown'
@@ -17,6 +19,17 @@ const previewRef = ref<HTMLElement | null>(null)
 const confirmDeleteOpen = ref(false)
 const deleting = ref(false)
 const deleteError = ref('')
+
+const importOpen = ref(false)
+const exporting = ref(false)
+
+interface FileNotice {
+  type: 'success' | 'error'
+  text: string
+}
+
+const fileNotice = ref<FileNotice | null>(null)
+let noticeTimer: number | null = null
 
 const modes: { value: EditorMode; label: string; icon: IconName }[] = [
   { value: 'edit', label: '编辑', icon: 'pencil' },
@@ -102,8 +115,85 @@ function resetPaneScroll(): void {
   })
 }
 
+function notify(type: FileNotice['type'], text: string): void {
+  fileNotice.value = { type, text }
+
+  if (noticeTimer !== null) {
+    window.clearTimeout(noticeTimer)
+    noticeTimer = null
+  }
+
+  if (type === 'success') {
+    noticeTimer = window.setTimeout(() => {
+      fileNotice.value = null
+      noticeTimer = null
+    }, 5000)
+  }
+}
+
+function openImport(): void {
+  if (!hasSelection.value) return
+
+  fileNotice.value = null
+  // 先把当前草稿落盘，避免导入覆盖后丢失未保存的编辑
+  void notes.flushSave()
+  importOpen.value = true
+}
+
+async function exportNote(): Promise<void> {
+  if (exporting.value) return
+  if (!notes.note && !notes.draft.content.trim()) return
+
+  exporting.value = true
+
+  try {
+    const saved = await notes.flushSave()
+    if (!saved) {
+      notify('error', '当前笔记保存失败，请先重试保存再导出。')
+      return
+    }
+
+    const current = notes.note
+    if (!current) {
+      notify('error', '笔记尚未保存，无法导出。')
+      return
+    }
+
+    const path = await exportNoteToMarkdown(current)
+    if (path) {
+      notify('success', `已导出到 ${path}`)
+    }
+  } catch (error) {
+    notify('error', error instanceof Error ? error.message : String(error))
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function onImported(pointId: string, title: string): Promise<void> {
+  importOpen.value = false
+
+  try {
+    // 目标知识点可能是在其它页面新建的，先刷新目录再切换
+    if (!notes.knowledgePoints.some((point) => point.id === pointId)) {
+      await notes.refreshCatalog()
+    }
+
+    if (pointId !== notes.selectedPointId) {
+      await notes.selectPoint(pointId)
+    } else {
+      await notes.reloadSelectedNote()
+    }
+
+    notify('success', `已导入「${title}」`)
+  } catch (error) {
+    notify('error', error instanceof Error ? error.message : String(error))
+  }
+}
+
 onBeforeUnmount(() => {
   if (scrollFrame) window.cancelAnimationFrame(scrollFrame)
+  if (noticeTimer !== null) window.clearTimeout(noticeTimer)
 })
 
 async function confirmDelete(): Promise<void> {
@@ -162,6 +252,28 @@ async function confirmDelete(): Promise<void> {
         </div>
 
         <button
+          type="button"
+          class="icon-button"
+          title="导入 Markdown"
+          aria-label="导入 Markdown"
+          :disabled="!hasSelection"
+          @click="openImport"
+        >
+          <AppIcon name="upload" :size="16" />
+        </button>
+
+        <button
+          type="button"
+          class="icon-button"
+          title="导出 Markdown"
+          aria-label="导出 Markdown"
+          :disabled="(!notes.note && !notes.draft.content.trim()) || exporting"
+          @click="exportNote"
+        >
+          <AppIcon name="download" :size="16" />
+        </button>
+
+        <button
           v-if="notes.note"
           type="button"
           class="icon-button"
@@ -189,6 +301,19 @@ async function confirmDelete(): Promise<void> {
       <AppIcon name="alert" :size="14" />
       <span class="workspace-banner__text">{{ notes.errorMessage }}</span>
       <button type="button" class="workspace-banner__close" @click="notes.dismissError()">
+        关闭
+      </button>
+    </div>
+
+    <div
+      v-if="fileNotice"
+      class="workspace-banner"
+      :class="{ 'workspace-banner--success': fileNotice.type === 'success' }"
+      :role="fileNotice.type === 'error' ? 'alert' : 'status'"
+    >
+      <AppIcon :name="fileNotice.type === 'success' ? 'sparkles' : 'alert'" :size="14" />
+      <span class="workspace-banner__text" :title="fileNotice.text">{{ fileNotice.text }}</span>
+      <button type="button" class="workspace-banner__close" @click="fileNotice = null">
         关闭
       </button>
     </div>
@@ -273,6 +398,13 @@ async function confirmDelete(): Promise<void> {
         </div>
       </div>
     </template>
+
+    <MarkdownImportDialog
+      :open="importOpen"
+      :default-point-id="notes.selectedPointId"
+      @close="importOpen = false"
+      @imported="onImported"
+    />
 
     <ConfirmDialog
       :open="confirmDeleteOpen"
@@ -421,6 +553,20 @@ async function confirmDelete(): Promise<void> {
   text-decoration: underline;
   background: none;
   border: none;
+}
+
+.workspace-banner--success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.workspace-banner--success .workspace-banner__close {
+  color: var(--color-success);
+}
+
+.note-toolbar .icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .workspace-empty {

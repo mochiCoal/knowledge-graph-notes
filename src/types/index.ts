@@ -89,6 +89,33 @@ export interface Note {
   updated_at: string
 }
 
+/** 笔记列表 / 搜索结果条目（后端 `list_notes` / `search_notes` 返回） */
+export interface NoteSummary {
+  id: string
+  knowledge_point_id: string
+  title: string
+  /** 正文摘要（已去除常见 Markdown 标记并截断） */
+  excerpt: string
+  created_at: string
+  updated_at: string
+  /** 所属知识点标题 */
+  knowledge_point_title: string
+  course_id: string
+  course_name: string
+  /** 正文字符数（忽略空白） */
+  character_count: number
+}
+
+/** 导入前读取到的本地 Markdown 文件（后端 `read_markdown_file` 返回） */
+export interface MarkdownFile {
+  file_name: string
+  /** 从一级标题或文件名解析出的标题 */
+  title: string
+  /** 去掉首行一级标题后的正文 */
+  content: string
+  character_count: number
+}
+
 /** 标签 */
 export interface Tag {
   id: string

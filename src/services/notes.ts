@@ -1,5 +1,5 @@
 import { invokeCommand } from './tauri'
-import type { KnowledgePoint, KnowledgeRelation, Note, Tag } from '@/types'
+import type { KnowledgePoint, KnowledgeRelation, MarkdownFile, Note, NoteSummary, Tag } from '@/types'
 
 /** 新建知识点入参 */
 export interface CreateKnowledgePointInput {
@@ -46,6 +46,20 @@ export const notesApi = {
     }),
 
   deleteNote: (noteId: string) => invokeCommand<void>('delete_note', { noteId }),
+
+  /** 全部笔记摘要（笔记库列表） */
+  listNotes: () => invokeCommand<NoteSummary[]>('list_notes'),
+
+  /** 按关键字搜索笔记标题与正文 */
+  searchNotes: (keyword: string) => invokeCommand<NoteSummary[]>('search_notes', { keyword }),
+
+  /** 把笔记导出为 Markdown 文件，返回实际写入路径 */
+  exportNote: (noteId: string, filePath: string) =>
+    invokeCommand<string>('export_note_markdown', { noteId, filePath }),
+
+  /** 读取本地 Markdown 文件（导入前预览标题与正文） */
+  readMarkdownFile: (filePath: string) =>
+    invokeCommand<MarkdownFile>('read_markdown_file', { filePath }),
 
   listTags: () => invokeCommand<Tag[]>('list_tags'),
 

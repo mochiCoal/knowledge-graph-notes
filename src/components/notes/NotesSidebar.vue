@@ -104,6 +104,14 @@ onBeforeUnmount(() => {
       <header class="notes-sidebar__header">
         <span>课程与知识点</span>
         <div class="notes-sidebar__actions">
+          <RouterLink
+            to="/note-library"
+            class="icon-button"
+            title="搜索全部笔记"
+            aria-label="打开笔记库搜索笔记"
+          >
+            <AppIcon name="search" :size="16" />
+          </RouterLink>
           <button
             type="button"
             class="icon-button"

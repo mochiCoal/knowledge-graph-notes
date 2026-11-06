@@ -13,7 +13,7 @@
 | 路由 / 状态 | Vue Router（hash 模式）+ Pinia |
 | 后端 | Rust + rusqlite |
 | 数据库 | SQLite（本地文件） |
-| Markdown | markdown-it（已安装依赖，未引入新依赖） |
+| Markdown | markdown-it 渲染；导入导出使用系统文件对话框（`tauri-plugin-dialog`） |
 | 知识图谱 | Vue Flow（阶段七接入） |
 
 ## 当前进度
@@ -28,13 +28,14 @@
   - 多级知识点树、详情面板、新建 / 编辑 / 删除
   - 层级调整（降为子级 / 提升一级 / 修改父节点），删除时整棵子树级联
   - 知识点连同子树迁移到其它课程，课程详情与笔记工作区双向联通
-- ✅ 笔记工作区与三档主题系统
-  - 课程 / 知识点树形目录，新增课程、新增知识点，宽度拖拽与折叠
-  - Markdown 编辑、实时预览、编辑 / 分屏 / 预览三种模式
-  - 800ms 自动保存、保存状态提示、切换知识点前落盘、删除二次确认
-  - 笔记标签、相关知识点面板，右侧面板可隐藏
+- ✅ 阶段四：Markdown 笔记
+  - 笔记库：列出全部笔记，按标题 / 正文搜索，打开到笔记工作区
+  - Markdown 文件导入（预览标题与正文、选择目标知识点、覆盖提示）
+  - 笔记导出为 `.md`（系统保存对话框，正文缺一级标题时自动补标题）
+  - 笔记工作区：编辑 / 分屏 / 预览、800ms 自动保存、切换前落盘、删除二次确认
+- ✅ 三档主题系统
   - 自动 / 日间 / 夜间主题，偏好持久化，自动模式跟随系统
-- ⏳ 笔记搜索与导入导出、知识图谱、关联建议等仍待后续阶段
+- ⏳ 标签管理（阶段五）、知识点关联与关联建议（阶段六）、知识图谱（阶段七）等仍待后续阶段
 
 完整任务清单见 [task.md](./task.md)。
 
@@ -63,13 +64,14 @@ knowledge-graph-notes/
 │  │  │  ├─ KnowledgePointFormDialog.vue   新建 / 编辑知识点弹窗
 │  │  │  └─ KnowledgePointDetailPanel.vue  知识点详情、层级调整与课程迁移
 │  │  └─ notes/                 笔记工作区组件
-│  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度）
+│  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度、笔记库入口）
 │  │     ├─ KnowledgeTreeNode.vue   递归知识点树
-│  │     ├─ NoteWorkspace.vue       标题、编辑 / 分屏 / 预览、保存状态
+│  │     ├─ NoteWorkspace.vue       标题、编辑 / 分屏 / 预览、保存状态、导入导出
+│  │     ├─ MarkdownImportDialog.vue Markdown 导入弹窗（预览、目标知识点、覆盖提示）
 │  │     ├─ NoteMetaPanel.vue       所属知识点、标签、相关知识点
 │  │     ├─ SaveStatusIndicator.vue 保存状态
 │  │     └─ KnowledgePointFormDialog.vue 新建知识点弹窗
-│  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、图谱、设置、404
+│  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、笔记库、图谱、设置、404
 │  ├─ router/                   路由表（meta 驱动导航 / 沉浸式页面）
 │  ├─ stores/
 │  │  ├─ app.ts                 应用级界面状态（侧边栏折叠）
@@ -82,7 +84,8 @@ knowledge-graph-notes/
 │  │  ├─ tauri.ts               invoke 统一封装与错误类型
 │  │  ├─ courses.ts             课程 CRUD API
 │  │  ├─ knowledgePoints.ts     知识点树 / 详情 / 增删改查 / 层级调整 API
-│  │  ├─ notes.ts               知识点 / 笔记 / 标签 / 关联 API
+│  │  ├─ notes.ts               知识点 / 笔记 / 标签 / 关联 / 搜索 / 导入导出 API
+│  │  ├─ markdownFiles.ts       系统文件选择框与 Markdown 导出封装
 │  │  └─ theme.ts               主题读取、解析、持久化
 │  ├─ utils/                    Markdown 渲染、时间与字数格式化
 │  ├─ types/                    领域模型、RouteMeta 扩展
@@ -187,7 +190,8 @@ knowledge-graph-notes/
 - 保存状态：未保存 / 保存中 / 已保存 / 保存失败（可重试）；
 - 切换知识点前会先保存当前草稿，避免内容丢失；
 - 删除笔记需要二次确认；
-- 笔记内容为空且标题未修改时不会创建空笔记。
+- 笔记内容为空且标题未修改时不会创建空笔记；
+- 工具栏提供「导入 Markdown」（导入到任意知识点，可先预览）与「导出 Markdown」（先落盘草稿再弹出系统保存框）。
 
 Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、列表、引用、代码块、表格等样式见 [`src/styles/markdown.css`](src/styles/markdown.css)，全部使用主题变量。
 
@@ -199,6 +203,19 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 - 关联建议：阶段六接入，目前为说明性占位；
 - 顶部 × 或工具栏按钮可隐藏面板，把空间让给编辑区。
 
+## 笔记库
+
+`/note-library` 是笔记视角的集中入口，与按知识点组织的笔记工作区互补：
+
+- 列出全部笔记，展示标题、正文摘要、所属课程 / 知识点、字数与更新时间；
+- 顶部搜索框按标题与正文检索（300ms 防抖，标题命中的结果排在前面），支持一键清空；
+- 点击笔记或「打开」跳转到笔记工作区并选中对应知识点；
+- 「导出」弹出系统保存框，把笔记写成 `.md` 文件（正文缺少一级标题时自动补上笔记标题）；
+- 「导入 Markdown」选择本地文件后，可预览正文、修改标题、选择目标知识点；目标知识点已有笔记时会提示将被覆盖；
+- 导入成功后直接进入笔记工作区，导出 / 导入结果通过顶部提示条反馈。
+
+导入解析规则：文件首行的 `# 一级标题` 会作为笔记标题并从正文移除；没有一级标题时使用文件名；仅支持 UTF-8 文本，文件上限 2 MB。
+
 ## 后端命令
 
 为支撑课程管理与笔记工作区的真实数据读写，当前注册的命令如下（**未修改数据库结构**，数据库仍使用 `001_initial.sql`）：
@@ -207,11 +224,13 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 | --- | --- |
 | 课程 | `list_courses` / `get_course` / `create_course` / `update_course` / `delete_course` |
 | 知识点 | `list_knowledge_points` / `list_knowledge_points_by_course` / `get_knowledge_point_tree` / `get_knowledge_point_detail` / `create_knowledge_point` / `update_knowledge_point` / `move_knowledge_point` / `move_knowledge_point_to_course` / `delete_knowledge_point` |
-| 笔记 | `get_note` / `save_note` / `delete_note` |
+| 笔记 | `get_note` / `save_note` / `delete_note` / `list_notes` / `search_notes` / `export_note_markdown` / `read_markdown_file` |
 | 标签 | `list_tags` / `create_tag` / `list_note_tags` / `attach_note_tag` / `detach_note_tag` |
 | 关联 | `list_relations` |
 
-课程与知识点命令已具备完整 CRUD、后端校验与层级保护；笔记搜索与导入导出属于后续阶段。
+课程、知识点与笔记命令已具备完整 CRUD、后端校验与文件读写；标签筛选与知识点关联属于后续阶段。
+
+> Markdown 导入 / 导出使用 `tauri-plugin-dialog` 调用系统文件选择框，权限为 `src-tauri/capabilities/default.json` 中的 `dialog:default`；文件读写本身由 Rust 命令完成，不依赖前端文件系统插件。
 
 ## 数据库
 

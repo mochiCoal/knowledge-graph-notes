@@ -45,3 +45,14 @@ export function formatDate(value: string | Date): string {
 export function countCharacters(text: string): number {
   return text.replace(/\s/g, '').length
 }
+
+/** 把笔记标题转换成可用的文件名（去掉 Windows 不允许的文件名字符） */
+export function toFileName(title: string, fallback = '笔记'): string {
+  const cleaned = title
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+
+  return cleaned || fallback
+}

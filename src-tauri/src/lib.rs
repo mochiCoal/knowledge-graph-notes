@@ -11,6 +11,7 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             db::initialize_database(app.handle())
                 .map_err(std::io::Error::other)?;
@@ -36,6 +37,10 @@ pub fn run() {
             commands::note::get_note,
             commands::note::save_note,
             commands::note::delete_note,
+            commands::note::list_notes,
+            commands::note::search_notes,
+            commands::note::export_note_markdown,
+            commands::note::read_markdown_file,
             commands::tag::list_tags,
             commands::tag::create_tag,
             commands::tag::list_note_tags,

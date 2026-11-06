@@ -287,6 +287,12 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  /** 重新加载当前知识点的笔记（导入 Markdown 后刷新草稿） */
+  async function reloadSelectedNote(): Promise<void> {
+    if (!selectedPointId.value) return
+    await loadNote(selectedPointId.value)
+  }
+
   function updateTitle(value: string): void {
     if (draft.title === value) return
     draft.title = value
@@ -513,6 +519,7 @@ export const useNotesStore = defineStore('notes', () => {
     updateContent,
     saveNow,
     flushSave,
+    reloadSelectedNote,
     deleteCurrentNote,
     addCourse,
     createKnowledgePoint,
