@@ -53,16 +53,28 @@ export const routes: RouteRecordRaw[] = [
     meta: { title: '笔记库', icon: 'library', nav: true, order: 5 },
   },
   {
+    path: '/tags',
+    name: 'tags',
+    component: () => import('@/views/TagsView.vue'),
+    meta: { title: '标签管理', icon: 'tag', nav: true, order: 6 },
+  },
+  {
+    path: '/relations',
+    name: 'relations',
+    component: () => import('@/views/RelationsView.vue'),
+    meta: { title: '知识关联', icon: 'link', nav: true, order: 7 },
+  },
+  {
     path: '/graph',
     name: 'graph',
     component: () => import('@/views/GraphView.vue'),
-    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 6 },
+    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 8 },
   },
   {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
-    meta: { title: '设置', icon: 'settings', nav: true, order: 7 },
+    meta: { title: '设置', icon: 'settings', nav: true, order: 9 },
   },
   {
     path: '/:pathMatch(.*)*',

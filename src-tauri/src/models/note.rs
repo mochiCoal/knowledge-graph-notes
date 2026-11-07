@@ -30,6 +30,8 @@ pub struct NoteSummary {
     pub course_name: String,
     /// 正文字符数（忽略空白）
     pub character_count: i64,
+    /// 笔记的标签名称（按名称排序）
+    pub tag_names: Vec<String>,
 }
 
 /// 从本地读取到的 Markdown 文件（导入前预览）

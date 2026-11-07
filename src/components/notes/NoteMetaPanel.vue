@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { formatDateTime } from '@/utils/format'
-import type { Tag } from '@/types'
+import type { RelationSuggestion, Tag } from '@/types'
 
 const notes = useNotesStore()
 const workspace = useWorkspaceStore()
@@ -13,20 +13,37 @@ const tagInput = ref('')
 const tagError = ref('')
 const removingTagId = ref<string | null>(null)
 
+const suggestionBusyId = ref<string | null>(null)
+const suggestionError = ref('')
+const suggestionNotice = ref('')
+
 const hasSelection = computed(() => notes.selectedPoint !== null)
+
+watch(
+  () => notes.selectedPointId,
+  () => {
+    suggestionBusyId.value = null
+    suggestionError.value = ''
+    suggestionNotice.value = ''
+  },
+)
 
 const updatedLabel = computed(() =>
   notes.note ? formatDateTime(notes.note.updated_at) : '尚未保存',
 )
 
-const RELATION_LABELS: Record<string, string> = {
-  prerequisite: '前置知识',
-  related: '相关知识',
-  contains: '包含关系',
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
-function relationLabel(type: string): string {
-  return RELATION_LABELS[type] ?? type
+function suggestionTitle(suggestion: RelationSuggestion): string {
+  return suggestion.source_id === notes.selectedPointId
+    ? suggestion.target_title
+    : suggestion.source_title
+}
+
+function scorePercent(score: number): number {
+  return Math.max(1, Math.min(100, Math.round(score * 100)))
 }
 
 async function submitTag(): Promise<void> {
@@ -39,7 +56,7 @@ async function submitTag(): Promise<void> {
     await notes.addTagToNote(value)
     tagInput.value = ''
   } catch (error) {
-    tagError.value = error instanceof Error ? error.message : String(error)
+    tagError.value = errorText(error)
   }
 }
 
@@ -52,9 +69,49 @@ async function removeTag(tag: Tag): Promise<void> {
   try {
     await notes.removeTagFromNote(tag)
   } catch (error) {
-    tagError.value = error instanceof Error ? error.message : String(error)
+    tagError.value = errorText(error)
   } finally {
     removingTagId.value = null
+  }
+}
+
+async function refreshSuggestions(): Promise<void> {
+  suggestionError.value = ''
+  suggestionNotice.value = ''
+  await notes.refreshSuggestions()
+}
+
+async function acceptSuggestion(suggestion: RelationSuggestion): Promise<void> {
+  if (suggestionBusyId.value) return
+
+  suggestionBusyId.value = suggestion.id
+  suggestionError.value = ''
+  suggestionNotice.value = ''
+
+  try {
+    await notes.acceptSuggestion(suggestion.id)
+    suggestionNotice.value = `已建立与「${suggestionTitle(suggestion)}」的关联`
+  } catch (error) {
+    suggestionError.value = errorText(error)
+  } finally {
+    suggestionBusyId.value = null
+  }
+}
+
+async function rejectSuggestion(suggestion: RelationSuggestion): Promise<void> {
+  if (suggestionBusyId.value) return
+
+  suggestionBusyId.value = suggestion.id
+  suggestionError.value = ''
+  suggestionNotice.value = ''
+
+  try {
+    await notes.rejectSuggestion(suggestion.id)
+    suggestionNotice.value = '已忽略该建议'
+  } catch (error) {
+    suggestionError.value = errorText(error)
+  } finally {
+    suggestionBusyId.value = null
   }
 }
 </script>
@@ -79,7 +136,7 @@ async function removeTag(tag: Tag): Promise<void> {
         <AppIcon name="tag" :size="18" />
       </div>
       <h3>未选择知识点</h3>
-      <p>选择知识点后可以查看所属课程、标签与相关知识点。</p>
+      <p>选择知识点后可以查看所属课程、标签、相关知识点与关联建议。</p>
     </div>
 
     <div v-else class="note-meta__body">
@@ -139,10 +196,18 @@ async function removeTag(tag: Tag): Promise<void> {
           </button>
         </form>
         <p v-if="tagError" class="form-error">{{ tagError }}</p>
+
+        <RouterLink to="/tags" class="meta-link">
+          <AppIcon name="tag" :size="12" />
+          管理全部标签
+        </RouterLink>
       </section>
 
       <section class="meta-section">
-        <h3>相关知识点</h3>
+        <h3>
+          相关知识点
+          <span class="meta-count">{{ notes.relatedItems.length }}</span>
+        </h3>
 
         <ul v-if="notes.relatedItems.length" class="related-list">
           <li v-for="item in notes.relatedItems" :key="item.relation.id">
@@ -151,19 +216,91 @@ async function removeTag(tag: Tag): Promise<void> {
               class="related-item"
               @click="notes.selectPoint(item.point.id)"
             >
+              <span
+                class="related-item__dot"
+                :style="{ background: notes.relationColor(item.relation.relation_type) }"
+              />
               <span class="related-item__title">{{ item.point.title }}</span>
               <span class="related-item__type">
-                {{ relationLabel(item.relation.relation_type) }}
+                {{ notes.relationLabel(item.relation.relation_type) }}
               </span>
             </button>
           </li>
         </ul>
-        <p v-else class="meta-hint">暂无关联知识点，关联功能将在阶段六实现。</p>
+        <p v-else class="meta-hint">暂无关联知识点，可以在知识关联页手动创建。</p>
+
+        <RouterLink
+          :to="{ name: 'relations', query: { point: notes.selectedPointId ?? undefined } }"
+          class="meta-link"
+        >
+          <AppIcon name="link" :size="12" />
+          管理知识点关联
+        </RouterLink>
       </section>
 
       <section class="meta-section">
-        <h3>关联建议</h3>
-        <p class="meta-hint">关联建议会根据笔记内容自动生成，计划在阶段六接入。</p>
+        <h3>
+          关联建议
+          <button
+            type="button"
+            class="section-action"
+            :disabled="notes.isLoadingSuggestions"
+            @click="refreshSuggestions"
+          >
+            刷新
+          </button>
+        </h3>
+
+        <div v-if="notes.isLoadingSuggestions" class="suggestion-state">
+          <span class="spinner" />
+          <span>正在分析文本…</span>
+        </div>
+        <p v-else-if="notes.suggestionsError" class="form-error">
+          {{ notes.suggestionsError }}
+        </p>
+        <p v-else-if="!notes.suggestions.length" class="meta-hint">
+          暂无合适的关联建议。补充知识点描述或笔记内容后，可点击「刷新」重新分析。
+        </p>
+        <ul v-else class="suggestion-list">
+          <li
+            v-for="suggestion in notes.suggestions"
+            :key="suggestion.id"
+            class="meta-suggestion"
+          >
+            <div class="meta-suggestion__head">
+              <span class="meta-suggestion__title" :title="suggestionTitle(suggestion)">
+                {{ suggestionTitle(suggestion) }}
+              </span>
+              <span class="meta-suggestion__score">
+                {{ scorePercent(suggestion.score) }}%
+              </span>
+            </div>
+            <p class="meta-suggestion__reason">
+              {{ suggestion.reasons.join('；') }}
+            </p>
+            <div class="meta-suggestion__actions">
+              <button
+                type="button"
+                class="ghost-button meta-suggestion__button"
+                :disabled="suggestionBusyId !== null"
+                @click="rejectSuggestion(suggestion)"
+              >
+                忽略
+              </button>
+              <button
+                type="button"
+                class="primary-button meta-suggestion__button"
+                :disabled="suggestionBusyId !== null"
+                @click="acceptSuggestion(suggestion)"
+              >
+                {{ suggestionBusyId === suggestion.id ? '处理中…' : '接受' }}
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <p v-if="suggestionNotice" class="meta-success">{{ suggestionNotice }}</p>
+        <p v-if="suggestionError" class="form-error">{{ suggestionError }}</p>
       </section>
     </div>
   </aside>
@@ -190,7 +327,7 @@ async function removeTag(tag: Tag): Promise<void> {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  height: 50px;
+  height: 46px;
   padding: 0 10px 0 16px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -216,11 +353,44 @@ async function removeTag(tag: Tag): Promise<void> {
 }
 
 .meta-section h3 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
   margin-bottom: 8px;
   color: var(--color-text-muted);
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+.meta-count {
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.section-action {
+  margin-left: auto;
+  padding: 0;
+  color: var(--color-accent-strong);
+  font-size: 10.5px;
+  font-weight: 400;
+  background: none;
+  border: none;
+}
+
+.section-action:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.section-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .point-card {
@@ -318,6 +488,27 @@ async function removeTag(tag: Tag): Promise<void> {
   line-height: 1.7;
 }
 
+.meta-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 9px;
+  color: var(--color-accent-strong);
+  font-size: 11px;
+}
+
+.meta-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.meta-success {
+  margin-top: 7px;
+  color: var(--color-success);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .related-list {
   display: flex;
   flex-direction: column;
@@ -326,9 +517,8 @@ async function removeTag(tag: Tag): Promise<void> {
 
 .related-item {
   display: flex;
-  gap: 10px;
+  gap: 7px;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
   padding: 7px 9px;
   text-align: left;
@@ -342,7 +532,15 @@ async function removeTag(tag: Tag): Promise<void> {
   background: var(--color-surface-hover);
 }
 
+.related-item__dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
 .related-item__title {
+  flex: 1;
   overflow: hidden;
   color: var(--color-text);
   font-size: 12.5px;
@@ -353,6 +551,72 @@ async function removeTag(tag: Tag): Promise<void> {
 .related-item__type {
   flex: 0 0 auto;
   color: var(--color-text-muted);
+  font-size: 10.5px;
+}
+
+.suggestion-state {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 2px;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.meta-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.meta-suggestion__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meta-suggestion__title {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.meta-suggestion__score {
+  flex: 0 0 auto;
+  color: var(--color-accent-strong);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.meta-suggestion__reason {
+  color: var(--color-text-muted);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.meta-suggestion__actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.meta-suggestion__button {
+  height: 25px;
+  padding: 0 9px;
   font-size: 10.5px;
 }
 </style>

@@ -36,16 +36,17 @@ defineProps<{
 }
 
 .page-header__title {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
 }
 
 .page-header__description {
   max-width: 640px;
   color: var(--color-text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .page-header__actions {
@@ -54,5 +55,20 @@ defineProps<{
   align-items: center;
   gap: 8px;
   padding-top: 2px;
+}
+
+@media (max-width: 600px) {
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .page-header__title {
+    font-size: 25px;
+  }
+
+  .page-header__actions {
+    width: 100%;
+  }
 }
 </style>

@@ -68,6 +68,12 @@ export interface KnowledgePointDetail {
   note_count: number
   /** 自身及全部后代的笔记数量 */
   subtree_note_count: number
+  /** 与该知识点相关的语义关联总数（出边 + 入边） */
+  relation_count: number
+  /** 以该知识点为源点的关联数量 */
+  outgoing_relation_count: number
+  /** 以该知识点为目标点的关联数量 */
+  incoming_relation_count: number
 }
 
 /** 删除知识点的结果（后端 `delete_knowledge_point` 返回） */
@@ -104,6 +110,8 @@ export interface NoteSummary {
   course_name: string
   /** 正文字符数（忽略空白） */
   character_count: number
+  /** 笔记的标签名称（按名称排序） */
+  tag_names: string[]
 }
 
 /** 导入前读取到的本地 Markdown 文件（后端 `read_markdown_file` 返回） */
@@ -122,6 +130,14 @@ export interface Tag {
   name: string
 }
 
+/** 标签管理列表条目（后端 `list_tag_overview` / `search_tags` 返回） */
+export interface TagSummary {
+  id: string
+  name: string
+  /** 使用该标签的笔记数量 */
+  note_count: number
+}
+
 /** 笔记与标签的关联 */
 export interface NoteTag {
   note_id: string
@@ -133,10 +149,58 @@ export interface KnowledgeRelation {
   id: string
   source_id: string
   target_id: string
-  /** 关联类型，取值由阶段六确定，例如 prerequisite / related / contains */
+  /** 关联类型字典 ID，例如 prerequisite / related / contains */
   relation_type: string
   description: string
   created_at: string
+}
+
+/** 关联详情（关联记录 + 两端知识点 / 课程与类型展示信息） */
+export interface RelationDetail extends KnowledgeRelation {
+  source_title: string
+  target_title: string
+  source_course_id: string
+  source_course_name: string
+  target_course_id: string
+  target_course_name: string
+  /** 类型显示名称（自定义类型被删除时回退为类型 ID） */
+  relation_label: string
+  relation_color: string
+  /** 有向关系（前置 / 包含 / 延伸）为 true */
+  directed: boolean
+}
+
+/** 关联类型字典项（含使用次数） */
+export interface RelationType {
+  id: string
+  label: string
+  /** `#RRGGBB` 格式，图谱阶段用于边着色 */
+  color: string
+  directed: boolean
+  description: string
+  is_builtin: boolean
+  sort_order: number
+  usage_count: number
+  created_at: string
+}
+
+/** 关联建议（本地文本相似度计算出的候选知识点对） */
+export interface RelationSuggestion {
+  id: string
+  source_id: string
+  target_id: string
+  source_title: string
+  target_title: string
+  relation_type: string
+  relation_type_label: string
+  /** 综合相似度，0 ~ 1 */
+  score: number
+  /** 可直接展示的推荐理由 */
+  reasons: string[]
+  /** pending / accepted / rejected */
+  status: string
+  created_at: string
+  updated_at: string
 }
 
 /** 笔记编辑区的三种视图模式 */

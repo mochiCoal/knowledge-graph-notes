@@ -236,29 +236,27 @@ async function confirmDelete(): Promise<void> {
 
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .course-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 178px;
   padding: 18px 20px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
   transition:
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .course-card:hover {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  background: var(--color-surface-soft);
+  border-color: var(--color-border-strong);
 }
 
 .course-card__head {
@@ -271,11 +269,12 @@ async function confirmDelete(): Promise<void> {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  color: var(--color-accent-strong);
-  background: var(--color-accent-soft);
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
 }
 
 .course-card__titles {
@@ -449,7 +448,7 @@ async function confirmDelete(): Promise<void> {
   text-underline-offset: 3px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .course-grid {
     grid-template-columns: minmax(0, 1fr);
   }

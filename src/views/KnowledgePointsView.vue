@@ -238,6 +238,10 @@ function retryDetail(): void {
 function openNote(pointId: string): void {
   void router.push({ name: 'notes', query: { point: pointId } })
 }
+
+function openRelations(pointId: string): void {
+  void router.push({ name: 'relations', query: { point: pointId } })
+}
 </script>
 
 <template>
@@ -397,6 +401,7 @@ function openNote(pointId: string): void {
           @delete="deleteSelected"
           @add-child="addChildToSelected"
           @open-note="openNote"
+          @open-relations="openRelations"
           @indent="indentPoint"
           @outdent="outdentPoint"
           @move-course="moveCourse"

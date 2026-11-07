@@ -1,5 +1,5 @@
 import { invokeCommand } from './tauri'
-import type { KnowledgePoint, KnowledgeRelation, MarkdownFile, Note, NoteSummary, Tag } from '@/types'
+import type { KnowledgePoint, KnowledgeRelation, MarkdownFile, Note, NoteSummary } from '@/types'
 
 /** 新建知识点入参 */
 export interface CreateKnowledgePointInput {
@@ -47,11 +47,13 @@ export const notesApi = {
 
   deleteNote: (noteId: string) => invokeCommand<void>('delete_note', { noteId }),
 
-  /** 全部笔记摘要（笔记库列表） */
-  listNotes: () => invokeCommand<NoteSummary[]>('list_notes'),
+  /** 全部笔记摘要（笔记库列表），可按标签筛选 */
+  listNotes: (tagId: string | null = null) =>
+    invokeCommand<NoteSummary[]>('list_notes', { tagId }),
 
-  /** 按关键字搜索笔记标题与正文 */
-  searchNotes: (keyword: string) => invokeCommand<NoteSummary[]>('search_notes', { keyword }),
+  /** 按关键字搜索笔记标题与正文，可按标签筛选 */
+  searchNotes: (keyword: string, tagId: string | null = null) =>
+    invokeCommand<NoteSummary[]>('search_notes', { keyword, tagId }),
 
   /** 把笔记导出为 Markdown 文件，返回实际写入路径 */
   exportNote: (noteId: string, filePath: string) =>
@@ -60,18 +62,6 @@ export const notesApi = {
   /** 读取本地 Markdown 文件（导入前预览标题与正文） */
   readMarkdownFile: (filePath: string) =>
     invokeCommand<MarkdownFile>('read_markdown_file', { filePath }),
-
-  listTags: () => invokeCommand<Tag[]>('list_tags'),
-
-  createTag: (name: string) => invokeCommand<Tag>('create_tag', { name }),
-
-  listNoteTags: (noteId: string) => invokeCommand<Tag[]>('list_note_tags', { noteId }),
-
-  attachTag: (noteId: string, tagId: string) =>
-    invokeCommand<void>('attach_note_tag', { noteId, tagId }),
-
-  detachTag: (noteId: string, tagId: string) =>
-    invokeCommand<void>('detach_note_tag', { noteId, tagId }),
 
   listRelations: () => invokeCommand<KnowledgeRelation[]>('list_relations'),
 }

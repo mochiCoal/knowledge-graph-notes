@@ -182,9 +182,9 @@ const maximizeLabel = computed(() => (isMaximized.value ? '还原' : '最大化'
   place-items: center;
   width: 18px;
   height: 18px;
-  color: #fff;
-  background: var(--gradient-brand);
-  border-radius: 5px;
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
+  border-radius: 4px;
 }
 
 .title-bar__title {

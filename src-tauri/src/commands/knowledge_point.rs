@@ -89,6 +89,27 @@ fn count_notes(conn: &Connection, point_id: &str) -> Result<i64, String> {
     .map_err(|e| db_error("统计知识点笔记", e))
 }
 
+/// 统计知识点的语义关联数量（出边、入边）
+fn count_relations(conn: &Connection, point_id: &str) -> Result<(i64, i64), String> {
+    let outgoing = conn
+        .query_row(
+            "SELECT COUNT(*) FROM knowledge_relations WHERE source_id = ?1",
+            [point_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| db_error("统计知识点关联", e))?;
+
+    let incoming = conn
+        .query_row(
+            "SELECT COUNT(*) FROM knowledge_relations WHERE target_id = ?1",
+            [point_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| db_error("统计知识点关联", e))?;
+
+    Ok((outgoing, incoming))
+}
+
 /// 校验并规范化知识点输入（名称必填且不超过 80 字，描述不超过 1000 字）
 fn validate_point_input(title: &str, description: &str) -> Result<(String, String), String> {
     let title = title.trim();
@@ -340,6 +361,8 @@ fn load_detail(conn: &Connection, point_id: &str) -> Result<KnowledgePointDetail
         )
         .map_err(|e| db_error("统计子知识点", e))?;
 
+    let (outgoing_relation_count, incoming_relation_count) = count_relations(conn, point_id)?;
+
     Ok(KnowledgePointDetail {
         point,
         course_name: course,
@@ -349,6 +372,9 @@ fn load_detail(conn: &Connection, point_id: &str) -> Result<KnowledgePointDetail
         descendant_count: subtree.len().saturating_sub(1) as i64,
         note_count: count_notes(conn, point_id)?,
         subtree_note_count,
+        relation_count: outgoing_relation_count + incoming_relation_count,
+        outgoing_relation_count,
+        incoming_relation_count,
     })
 }
 
@@ -774,6 +800,29 @@ mod tests {
         assert_eq!(root.descendant_count, 2);
         assert_eq!(root.note_count, 1);
         assert_eq!(root.subtree_note_count, 3);
+    }
+
+    #[test]
+    fn detail_reports_relation_counts() {
+        let conn = test_connection();
+        seed_tree(&conn);
+
+        conn.execute(
+            "INSERT INTO knowledge_relations
+                (id, source_id, target_id, relation_type, description, created_at)
+             VALUES ('r1', 'k1', 'k2', 'related', '', '2026-01-01T00:00:00Z'),
+                    ('r2', 'k3', 'k1', 'prerequisite', '', '2026-01-01T00:00:00Z')",
+            [],
+        )
+        .expect("插入关联失败");
+
+        let detail = load_detail(&conn, "k1").expect("读取知识点详情失败");
+        assert_eq!(detail.relation_count, 2);
+        assert_eq!(detail.outgoing_relation_count, 1);
+        assert_eq!(detail.incoming_relation_count, 1);
+
+        let none = load_detail(&conn, "k4").expect("读取知识点详情失败");
+        assert_eq!(none.relation_count, 0);
     }
 
     #[test]

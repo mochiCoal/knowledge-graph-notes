@@ -1,10 +1,11 @@
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use tauri::AppHandle;
 use uuid::Uuid;
 
-use crate::db::{db_error, get_connection};
+use crate::db::{db_error, escape_like, get_connection};
 use crate::models::note::{MarkdownFile, Note, NoteSummary};
 
 /// 笔记标题最大长度（与前端输入框限制一致）
@@ -53,6 +54,7 @@ fn map_note_summary(row: &Row<'_>) -> rusqlite::Result<NoteSummary> {
         course_id: row.get(7)?,
         course_name: row.get(8)?,
         character_count: count_characters(&content),
+        tag_names: Vec::new(),
     })
 }
 
@@ -115,53 +117,112 @@ fn excerpt(content: &str, limit: usize) -> String {
     truncate_chars(&buffer, limit)
 }
 
-/// 转义 LIKE 通配符，让用户输入的关键字按字面量匹配
-fn escape_like(keyword: &str) -> String {
-    let mut escaped = String::with_capacity(keyword.len());
-
-    for ch in keyword.chars() {
-        if matches!(ch, '%' | '_' | '\\') {
-            escaped.push('\\');
-        }
-        escaped.push(ch);
-    }
-
-    escaped
-}
-
 fn query_summaries(
     conn: &Connection,
     sql: &str,
     params: impl rusqlite::Params,
 ) -> Result<Vec<NoteSummary>, String> {
-    let mut stmt = conn
-        .prepare(sql)
-        .map_err(|e| db_error("读取笔记列表", e))?;
+    let mut summaries = {
+        let mut stmt = conn
+            .prepare(sql)
+            .map_err(|e| db_error("读取笔记列表", e))?;
 
-    stmt.query_map(params, map_note_summary)
-        .map_err(|e| db_error("读取笔记列表", e))?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(|e| db_error("读取笔记列表", e))
+        stmt.query_map(params, map_note_summary)
+            .map_err(|e| db_error("读取笔记列表", e))?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(|e| db_error("读取笔记列表", e))?
+    };
+
+    attach_tag_names(conn, &mut summaries)?;
+    Ok(summaries)
 }
 
-/// 查询笔记摘要列表；`keyword` 为空时返回全部笔记
-fn list_summaries(conn: &Connection, keyword: Option<&str>) -> Result<Vec<NoteSummary>, String> {
-    match keyword.map(str::trim).filter(|keyword| !keyword.is_empty()) {
-        None => {
-            let sql = format!("{NOTE_SUMMARY_SELECT} ORDER BY n.updated_at DESC");
-            query_summaries(conn, &sql, [])
-        }
-        Some(keyword) => {
-            let sql = format!(
-                "{NOTE_SUMMARY_SELECT}
-                 WHERE n.title LIKE ?1 ESCAPE '\\' OR n.content LIKE ?1 ESCAPE '\\'
-                 ORDER BY CASE WHEN n.title LIKE ?1 ESCAPE '\\' THEN 0 ELSE 1 END,
-                          n.updated_at DESC"
-            );
-            let pattern = format!("%{}%", escape_like(keyword));
-            query_summaries(conn, &sql, [pattern])
+/// 为笔记摘要补充标签名称（按名称排序）
+fn attach_tag_names(conn: &Connection, summaries: &mut [NoteSummary]) -> Result<(), String> {
+    if summaries.is_empty() {
+        return Ok(());
+    }
+
+    let ids: HashSet<String> = summaries
+        .iter()
+        .map(|summary| summary.id.clone())
+        .collect();
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT nt.note_id, t.name
+             FROM note_tags nt
+             INNER JOIN tags t ON t.id = nt.tag_id",
+        )
+        .map_err(|e| db_error("读取笔记标签", e))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|e| db_error("读取笔记标签", e))?;
+
+    let mut tag_names: HashMap<String, Vec<String>> = HashMap::new();
+    for row in rows {
+        let (note_id, name) = row.map_err(|e| db_error("读取笔记标签", e))?;
+        if ids.contains(&note_id) {
+            tag_names.entry(note_id).or_default().push(name);
         }
     }
+
+    for summary in summaries.iter_mut() {
+        let mut names = tag_names.remove(&summary.id).unwrap_or_default();
+        names.sort();
+        summary.tag_names = names;
+    }
+
+    Ok(())
+}
+
+/// 查询笔记摘要列表；`keyword` 与 `tag_id` 均可选，同时提供时取交集
+fn list_summaries(
+    conn: &Connection,
+    keyword: Option<&str>,
+    tag_id: Option<&str>,
+) -> Result<Vec<NoteSummary>, String> {
+    let keyword = keyword.map(str::trim).filter(|keyword| !keyword.is_empty());
+    let tag_id = tag_id.map(str::trim).filter(|tag_id| !tag_id.is_empty());
+
+    let mut clauses: Vec<String> = Vec::new();
+    let mut values: Vec<String> = Vec::new();
+
+    if let Some(keyword) = keyword {
+        let index = values.len() + 1;
+        clauses.push(format!(
+            "(n.title LIKE ?{index} ESCAPE '\\' OR n.content LIKE ?{index} ESCAPE '\\')"
+        ));
+        values.push(format!("%{}%", escape_like(keyword)));
+    }
+
+    if let Some(tag_id) = tag_id {
+        let index = values.len() + 1;
+        clauses.push(format!(
+            "EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.id AND nt.tag_id = ?{index})"
+        ));
+        values.push(tag_id.to_string());
+    }
+
+    let where_sql = if clauses.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", clauses.join(" AND "))
+    };
+
+    // 标题命中的笔记排在内容命中之前
+    let order_sql = if keyword.is_some() {
+        "ORDER BY CASE WHEN n.title LIKE ?1 ESCAPE '\\' THEN 0 ELSE 1 END, n.updated_at DESC"
+    } else {
+        "ORDER BY n.updated_at DESC"
+    };
+
+    let sql = format!("{NOTE_SUMMARY_SELECT} {where_sql} {order_sql}");
+
+    query_summaries(conn, &sql, rusqlite::params_from_iter(values.iter().map(String::as_str)))
 }
 
 fn point_title(conn: &Connection, knowledge_point_id: &str) -> Result<String, String> {
@@ -395,18 +456,22 @@ pub fn delete_note(app: AppHandle, note_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// 查询全部笔记（笔记库列表，按更新时间倒序）
+/// 查询全部笔记（笔记库列表，按更新时间倒序，可按标签筛选）
 #[tauri::command]
-pub fn list_notes(app: AppHandle) -> Result<Vec<NoteSummary>, String> {
+pub fn list_notes(app: AppHandle, tag_id: Option<String>) -> Result<Vec<NoteSummary>, String> {
     let conn = get_connection(&app)?;
-    list_summaries(&conn, None)
+    list_summaries(&conn, None, tag_id.as_deref())
 }
 
-/// 按关键字搜索笔记标题与正文（空关键字等价于查询全部）
+/// 按关键字搜索笔记标题与正文（空关键字等价于查询全部，可按标签筛选）
 #[tauri::command]
-pub fn search_notes(app: AppHandle, keyword: String) -> Result<Vec<NoteSummary>, String> {
+pub fn search_notes(
+    app: AppHandle,
+    keyword: String,
+    tag_id: Option<String>,
+) -> Result<Vec<NoteSummary>, String> {
     let conn = get_connection(&app)?;
-    list_summaries(&conn, Some(&keyword))
+    list_summaries(&conn, Some(&keyword), tag_id.as_deref())
 }
 
 /// 把笔记导出为 Markdown 文件，返回实际写入的路径
@@ -507,7 +572,7 @@ mod tests {
         let conn = test_connection();
         seed(&conn);
 
-        let summaries = list_summaries(&conn, None).expect("读取笔记列表失败");
+        let summaries = list_summaries(&conn, None, None).expect("读取笔记列表失败");
         assert_eq!(
             summaries
                 .iter()
@@ -522,6 +587,7 @@ mod tests {
         assert_eq!(first.course_id, "c1");
         assert_eq!(first.character_count, 16, "忽略空白后的字符数");
         assert!(!first.excerpt.is_empty());
+        assert!(first.tag_names.is_empty());
     }
 
     #[test]
@@ -529,35 +595,80 @@ mod tests {
         let conn = test_connection();
         seed(&conn);
 
-        let by_title = list_summaries(&conn, Some("链表")).expect("搜索笔记失败");
+        let by_title = list_summaries(&conn, Some("链表"), None).expect("搜索笔记失败");
         assert_eq!(by_title.len(), 1);
         assert_eq!(by_title[0].id, "n1");
 
-        let by_content = list_summaries(&conn, Some("分治")).expect("搜索笔记失败");
+        let by_content = list_summaries(&conn, Some("分治"), None).expect("搜索笔记失败");
         assert_eq!(by_content.len(), 1);
         assert_eq!(by_content[0].id, "n2");
 
         // 标题命中的笔记排在内容命中的前面
-        let both = list_summaries(&conn, Some("排序")).expect("搜索笔记失败");
+        let both = list_summaries(&conn, Some("排序"), None).expect("搜索笔记失败");
         assert_eq!(both[0].id, "n2");
 
         assert!(
-            list_summaries(&conn, Some("不存在的关键字"))
+            list_summaries(&conn, Some("不存在的关键字"), None)
                 .expect("搜索笔记失败")
                 .is_empty()
         );
         // 通配符按字面量处理，不会匹配到所有笔记
         assert!(
-            list_summaries(&conn, Some("%"))
+            list_summaries(&conn, Some("%"), None)
                 .expect("搜索笔记失败")
                 .is_empty()
         );
         // 空白关键字等价于查询全部
         assert_eq!(
-            list_summaries(&conn, Some("   "))
+            list_summaries(&conn, Some("   "), None)
                 .expect("搜索笔记失败")
                 .len(),
             2
+        );
+    }
+
+    #[test]
+    fn summaries_include_tags_and_support_tag_filter() {
+        let conn = test_connection();
+        seed(&conn);
+
+        conn.execute("INSERT INTO tags (id, name) VALUES ('tg1', '重点')", [])
+            .expect("插入标签失败");
+        conn.execute("INSERT INTO tags (id, name) VALUES ('tg2', '面试')", [])
+            .expect("插入标签失败");
+        for (note_id, tag_id) in [("n1", "tg1"), ("n1", "tg2"), ("n2", "tg1")] {
+            conn.execute(
+                "INSERT INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
+                params![note_id, tag_id],
+            )
+            .expect("插入笔记标签失败");
+        }
+
+        let all = list_summaries(&conn, None, None).expect("读取笔记列表失败");
+        let n1 = all.iter().find(|item| item.id == "n1").expect("缺少 n1");
+        assert_eq!(n1.tag_names, vec!["重点", "面试"]);
+        let n2 = all.iter().find(|item| item.id == "n2").expect("缺少 n2");
+        assert_eq!(n2.tag_names, vec!["重点"]);
+
+        let by_tag = list_summaries(&conn, None, Some("tg2")).expect("按标签筛选失败");
+        assert_eq!(by_tag.len(), 1);
+        assert_eq!(by_tag[0].id, "n1");
+
+        // 关键字与标签同时生效
+        let combined = list_summaries(&conn, Some("链表"), Some("tg1")).expect("组合筛选失败");
+        assert_eq!(combined.len(), 1);
+        assert_eq!(combined[0].id, "n1");
+
+        assert!(
+            list_summaries(&conn, Some("分治"), Some("tg2"))
+                .expect("组合筛选失败")
+                .is_empty()
+        );
+        // 不存在的标签不会匹配任何笔记
+        assert!(
+            list_summaries(&conn, None, Some("missing"))
+                .expect("按标签筛选失败")
+                .is_empty()
         );
     }
 

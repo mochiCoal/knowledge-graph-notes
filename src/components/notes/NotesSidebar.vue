@@ -163,7 +163,12 @@ onBeforeUnmount(() => {
             <div
               class="course-row"
               :class="{ 'is-open': isCourseExpanded(course.id) }"
+              role="button"
+              tabindex="0"
+              :aria-expanded="isCourseExpanded(course.id)"
               @click="toggleCourse(course.id)"
+              @keydown.enter.prevent="toggleCourse(course.id)"
+              @keydown.space.prevent="toggleCourse(course.id)"
             >
               <AppIcon name="chevron-right" :size="13" class="course-row__chevron" />
               <span class="course-row__name" :title="course.name">{{ course.name }}</span>
@@ -174,6 +179,7 @@ onBeforeUnmount(() => {
                 title="在此课程下新建知识点"
                 aria-label="在此课程下新建知识点"
                 @click.stop="openPointDialog(course.id)"
+                @keydown.stop
               >
                 <AppIcon name="plus" :size="14" />
               </button>
@@ -231,7 +237,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--color-sidebar);
   border-right: 1px solid var(--color-border);
   transition:
     width 180ms ease,
@@ -261,7 +267,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  height: 50px;
+  height: 46px;
   padding: 0 8px 0 14px;
   border-bottom: 1px solid var(--color-border);
 }

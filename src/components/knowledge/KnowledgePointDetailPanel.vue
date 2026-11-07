@@ -23,6 +23,7 @@ const emit = defineEmits<{
   delete: []
   addChild: []
   openNote: [pointId: string]
+  openRelations: [pointId: string]
   indent: []
   outdent: []
   moveCourse: [courseId: string]
@@ -151,6 +152,10 @@ function submitMoveCourse(): void {
           <strong>{{ detail.note_count }}</strong>
           <span>直接笔记</span>
         </div>
+        <div class="detail-stat">
+          <strong>{{ detail.relation_count }}</strong>
+          <span>语义关联</span>
+        </div>
       </div>
 
       <section class="detail-section">
@@ -216,6 +221,28 @@ function submitMoveCourse(): void {
             {{ courseBusy ? '迁移中…' : '迁移' }}
           </button>
         </div>
+      </section>
+
+      <section class="detail-section">
+        <h4>
+          知识关联
+          <span class="detail-section__hint">
+            {{ detail.outgoing_relation_count }} 条出边 · {{ detail.incoming_relation_count }} 条入边
+          </span>
+        </h4>
+        <div class="button-row">
+          <button
+            type="button"
+            class="ghost-button button-row__item"
+            @click="emit('openRelations', point.id)"
+          >
+            <AppIcon name="link" :size="15" />
+            查看 / 管理关联
+          </button>
+        </div>
+        <p class="detail-hint">
+          语义关联与父子层级相互独立，可在知识关联页查看推荐并确认新的关系。
+        </p>
       </section>
 
       <section class="detail-section">
@@ -348,7 +375,7 @@ function submitMoveCourse(): void {
 
 .detail-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 

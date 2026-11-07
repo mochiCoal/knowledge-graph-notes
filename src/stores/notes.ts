@@ -2,11 +2,15 @@ import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { coursesApi } from '@/services/courses'
 import { notesApi, type CreateKnowledgePointInput } from '@/services/notes'
+import { relationsApi } from '@/services/relations'
+import { tagsApi } from '@/services/tags'
 import type {
   Course,
   KnowledgePoint,
   KnowledgeRelation,
   Note,
+  RelationSuggestion,
+  RelationType,
   SaveStatus,
   Tag,
 } from '@/types'
@@ -59,8 +63,10 @@ export const useNotesStore = defineStore('notes', () => {
   const courses = ref<Course[]>([])
   const knowledgePoints = ref<KnowledgePoint[]>([])
   const relations = ref<KnowledgeRelation[]>([])
+  const relationTypes = ref<RelationType[]>([])
   const allTags = ref<Tag[]>([])
   const noteTags = ref<Tag[]>([])
+  const suggestions = ref<RelationSuggestion[]>([])
 
   const selectedPointId = ref<string | null>(null)
   const note = ref<Note | null>(null)
@@ -70,11 +76,14 @@ export const useNotesStore = defineStore('notes', () => {
   const lastSavedAt = ref<Date | null>(null)
   const isLoading = ref(false)
   const isLoadingNote = ref(false)
+  const isLoadingSuggestions = ref(false)
   const errorMessage = ref<string | null>(null)
+  const suggestionsError = ref<string | null>(null)
   const initialized = ref(false)
 
   let saveTimer: number | null = null
   let saveTask: Promise<void> | null = null
+  let suggestionsRequest = 0
 
   const pointIndex = computed(() => {
     const map = new Map<string, KnowledgePoint>()
@@ -163,17 +172,31 @@ export const useNotesStore = defineStore('notes', () => {
 
   const characterCount = computed(() => countCharacters(draft.content))
 
+  function relationTypeOf(typeId: string): RelationType | null {
+    return relationTypes.value.find((type) => type.id === typeId) ?? null
+  }
+
+  function relationLabel(typeId: string): string {
+    return relationTypeOf(typeId)?.label ?? typeId
+  }
+
+  function relationColor(typeId: string): string {
+    return relationTypeOf(typeId)?.color ?? 'var(--color-accent)'
+  }
+
   async function loadWorkspaceData(): Promise<void> {
-    const [courseList, pointList, relationList, tagList] = await Promise.all([
+    const [courseList, pointList, relationList, typeList, tagList] = await Promise.all([
       coursesApi.list(),
       notesApi.listKnowledgePoints(),
       notesApi.listRelations(),
-      notesApi.listTags(),
+      relationsApi.listTypes(),
+      tagsApi.list(),
     ])
 
     courses.value = courseList
     knowledgePoints.value = pointList
     relations.value = relationList
+    relationTypes.value = typeList
     allTags.value = tagList
   }
 
@@ -252,7 +275,7 @@ export const useNotesStore = defineStore('notes', () => {
     lastSavedAt.value = null
     errorMessage.value = null
 
-    await loadNote(pointId)
+    await Promise.all([loadNote(pointId), loadSuggestions(pointId)])
   }
 
   async function loadNote(pointId: string): Promise<void> {
@@ -270,7 +293,7 @@ export const useNotesStore = defineStore('notes', () => {
         lastSavedAt.value = new Date(existing.updated_at)
 
         try {
-          noteTags.value = await notesApi.listNoteTags(existing.id)
+          noteTags.value = await tagsApi.listNoteTags(existing.id)
         } catch (error) {
           errorMessage.value = errorText(error)
         }
@@ -291,6 +314,47 @@ export const useNotesStore = defineStore('notes', () => {
   async function reloadSelectedNote(): Promise<void> {
     if (!selectedPointId.value) return
     await loadNote(selectedPointId.value)
+  }
+
+  /** 生成当前知识点的关联建议（本地文本相似度，不依赖网络） */
+  async function loadSuggestions(pointId: string): Promise<void> {
+    const requestId = ++suggestionsRequest
+    isLoadingSuggestions.value = true
+    suggestionsError.value = null
+
+    try {
+      const result = await relationsApi.generateSuggestions(pointId, 4)
+      if (requestId === suggestionsRequest && selectedPointId.value === pointId) {
+        suggestions.value = result
+      }
+    } catch (error) {
+      if (requestId === suggestionsRequest) {
+        suggestions.value = []
+        suggestionsError.value = errorText(error)
+      }
+    } finally {
+      if (requestId === suggestionsRequest) {
+        isLoadingSuggestions.value = false
+      }
+    }
+  }
+
+  async function refreshSuggestions(): Promise<void> {
+    if (!selectedPointId.value) return
+    await loadSuggestions(selectedPointId.value)
+  }
+
+  /** 接受建议：写入正式关联并同步「相关知识点」 */
+  async function acceptSuggestion(suggestionId: string): Promise<void> {
+    await relationsApi.acceptSuggestion(suggestionId)
+    suggestions.value = suggestions.value.filter((item) => item.id !== suggestionId)
+    relations.value = await notesApi.listRelations()
+  }
+
+  /** 拒绝建议：后端记录后不会再次推荐 */
+  async function rejectSuggestion(suggestionId: string): Promise<void> {
+    await relationsApi.rejectSuggestion(suggestionId)
+    suggestions.value = suggestions.value.filter((item) => item.id !== suggestionId)
   }
 
   function updateTitle(value: string): void {
@@ -416,6 +480,9 @@ export const useNotesStore = defineStore('notes', () => {
     selectedPointId.value = null
     note.value = null
     noteTags.value = []
+    suggestions.value = []
+    suggestionsRequest += 1
+    isLoadingSuggestions.value = false
     draft.title = ''
     draft.content = ''
     saveStatus.value = 'idle'
@@ -468,19 +535,19 @@ export const useNotesStore = defineStore('notes', () => {
     }
     if (!note.value) return
 
-    const tag = await notesApi.createTag(trimmed)
+    const tag = await tagsApi.create(trimmed)
     const noteId = note.value.id
-    await notesApi.attachTag(noteId, tag.id)
+    await tagsApi.attachToNote(noteId, tag.id)
 
-    noteTags.value = await notesApi.listNoteTags(noteId)
-    allTags.value = await notesApi.listTags()
+    noteTags.value = await tagsApi.listNoteTags(noteId)
+    allTags.value = await tagsApi.list()
   }
 
   async function removeTagFromNote(tag: Tag): Promise<void> {
     if (!note.value) return
 
     const noteId = note.value.id
-    await notesApi.detachTag(noteId, tag.id)
+    await tagsApi.detachFromNote(noteId, tag.id)
     noteTags.value = noteTags.value.filter((item) => item.id !== tag.id)
   }
 
@@ -493,8 +560,10 @@ export const useNotesStore = defineStore('notes', () => {
     courses,
     knowledgePoints,
     relations,
+    relationTypes,
     allTags,
     noteTags,
+    suggestions,
     // 选择与草稿
     selectedPointId,
     selectedPoint,
@@ -509,7 +578,9 @@ export const useNotesStore = defineStore('notes', () => {
     lastSavedAt,
     isLoading,
     isLoadingNote,
+    isLoadingSuggestions,
     errorMessage,
+    suggestionsError,
     initialized,
     // 行为
     initialize,
@@ -520,6 +591,12 @@ export const useNotesStore = defineStore('notes', () => {
     saveNow,
     flushSave,
     reloadSelectedNote,
+    loadSuggestions,
+    refreshSuggestions,
+    acceptSuggestion,
+    rejectSuggestion,
+    relationLabel,
+    relationColor,
     deleteCurrentNote,
     addCourse,
     createKnowledgePoint,

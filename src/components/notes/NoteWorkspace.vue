@@ -441,8 +441,9 @@ async function confirmDelete(): Promise<void> {
   flex: 0 0 auto;
   gap: 8px;
   align-items: center;
-  height: 50px;
-  padding: 0 10px 0 10px;
+  height: 46px;
+  padding: 0 10px;
+  background: var(--color-editor);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -611,8 +612,11 @@ async function confirmDelete(): Promise<void> {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 26px 8px 28px;
+  gap: 8px;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 30px 28px 16px;
 }
 
 .note-title-row {
@@ -627,10 +631,10 @@ async function confirmDelete(): Promise<void> {
   min-width: 0;
   padding: 0;
   color: var(--color-text);
-  font-size: 21px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
   background: transparent;
   border: none;
 }
@@ -683,12 +687,12 @@ async function confirmDelete(): Promise<void> {
   width: 100%;
   max-width: 880px;
   height: 100%;
-  padding: 8px 28px 72px;
+  padding: 4px 28px 96px;
   overflow-y: auto;
   color: var(--color-text);
   font-family: var(--font-mono);
-  font-size: 13.5px;
-  line-height: 1.8;
+  font-size: 14px;
+  line-height: 1.9;
   tab-size: 2;
   background: transparent;
   border: none;

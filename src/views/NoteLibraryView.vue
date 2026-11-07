@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import MarkdownImportDialog from '@/components/notes/MarkdownImportDialog.vue'
 import { exportNoteToMarkdown } from '@/services/markdownFiles'
 import { notesApi } from '@/services/notes'
-import type { NoteSummary } from '@/types'
+import { tagsApi } from '@/services/tags'
+import type { NoteSummary, TagSummary } from '@/types'
 import { formatDateTime } from '@/utils/format'
 
+const route = useRoute()
 const router = useRouter()
 
 const notes = ref<NoteSummary[]>([])
+const tags = ref<TagSummary[]>([])
 const keyword = ref('')
+const activeTagId = ref<string | null>(null)
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const exportingId = ref<string | null>(null)
@@ -23,17 +27,45 @@ let searchTimer: number | null = null
 /** 搜索请求序号：避免慢的旧请求覆盖新结果 */
 let requestId = 0
 
+function readTagFromQuery(): string | null {
+  const value = route.query.tag
+  return typeof value === 'string' && value !== '' ? value : null
+}
+
 const isSearching = computed(() => keyword.value.trim() !== '')
 
+const activeTag = computed(
+  () => tags.value.find((tag) => tag.id === activeTagId.value) ?? null,
+)
+
+/** 过滤条只展示有关联笔记的标签，当前筛选的标签始终保留 */
+const filterTags = computed(() =>
+  tags.value.filter((tag) => tag.note_count > 0 || tag.id === activeTagId.value),
+)
+
 const metaText = computed(() => {
+  const scope = activeTag.value ? `标签「${activeTag.value.name}」` : ''
+
   if (isSearching.value) {
-    return `找到 ${notes.value.length} 条与「${keyword.value.trim()}」相关的笔记`
+    return scope
+      ? `在${scope}中找到 ${notes.value.length} 条与「${keyword.value.trim()}」相关的笔记`
+      : `找到 ${notes.value.length} 条与「${keyword.value.trim()}」相关的笔记`
   }
-  return `共 ${notes.value.length} 条笔记`
+
+  return scope ? `${scope}下共 ${notes.value.length} 条笔记` : `共 ${notes.value.length} 条笔记`
 })
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+async function loadTags(): Promise<void> {
+  try {
+    tags.value = await tagsApi.overview()
+  } catch {
+    // 标签筛选属于增强能力，加载失败不影响笔记列表
+    tags.value = []
+  }
 }
 
 async function load(searchKeyword = keyword.value): Promise<void> {
@@ -43,7 +75,11 @@ async function load(searchKeyword = keyword.value): Promise<void> {
 
   try {
     const trimmed = searchKeyword.trim()
-    const result = trimmed ? await notesApi.searchNotes(trimmed) : await notesApi.listNotes()
+    const tagId = activeTagId.value
+    const result = trimmed
+      ? await notesApi.searchNotes(trimmed, tagId)
+      : await notesApi.listNotes(tagId)
+
     if (currentRequest === requestId) {
       notes.value = result
     }
@@ -56,6 +92,19 @@ async function load(searchKeyword = keyword.value): Promise<void> {
       isLoading.value = false
     }
   }
+}
+
+function selectTag(tagId: string | null): void {
+  if (tagId === activeTagId.value) return
+
+  const query = { ...route.query }
+  if (tagId) {
+    query.tag = tagId
+  } else {
+    delete query.tag
+  }
+
+  void router.replace({ query })
 }
 
 function scheduleSearch(): void {
@@ -112,9 +161,22 @@ async function onImported(pointId: string, title: string): Promise<void> {
   void router.push({ name: 'notes', query: { point: pointId } })
 }
 
-onMounted(() => {
-  void load('')
+onMounted(async () => {
+  activeTagId.value = readTagFromQuery()
+  await Promise.all([loadTags(), load('')])
 })
+
+// 标签筛选写进路由，便于从标签管理页直接带标签进入
+watch(
+  () => route.query.tag,
+  () => {
+    const next = readTagFromQuery()
+    if (next === activeTagId.value) return
+
+    activeTagId.value = next
+    void load()
+  },
+)
 
 onBeforeUnmount(() => {
   if (searchTimer !== null) window.clearTimeout(searchTimer)
@@ -172,6 +234,32 @@ onBeforeUnmount(() => {
       <span class="library-bar__meta">{{ metaText }}</span>
     </section>
 
+    <div v-if="tags.length" class="tag-filters" aria-label="按标签筛选">
+      <button
+        type="button"
+        class="filter-chip"
+        :class="{ 'is-active': activeTagId === null }"
+        @click="selectTag(null)"
+      >
+        全部
+      </button>
+      <button
+        v-for="tag in filterTags"
+        :key="tag.id"
+        type="button"
+        class="filter-chip"
+        :class="{ 'is-active': activeTagId === tag.id }"
+        @click="selectTag(tag.id)"
+      >
+        #{{ tag.name }}
+        <span class="filter-chip__count">{{ tag.note_count }}</span>
+      </button>
+      <RouterLink to="/tags" class="filter-chip filter-chip--link" title="管理标签">
+        <AppIcon name="tag" :size="13" />
+        管理标签
+      </RouterLink>
+    </div>
+
     <div v-if="isLoading && !notes.length" class="library-state">
       <span class="spinner" />
       <span>正在加载笔记…</span>
@@ -190,16 +278,39 @@ onBeforeUnmount(() => {
       <div class="empty-panel__icon">
         <AppIcon :name="isSearching ? 'search' : 'notes'" :size="22" />
       </div>
-      <h3>{{ isSearching ? '没有找到匹配的笔记' : '还没有笔记' }}</h3>
+      <h3>
+        {{
+          isSearching
+            ? '没有找到匹配的笔记'
+            : activeTag
+              ? `标签「${activeTag.name}」下没有笔记`
+              : '还没有笔记'
+        }}
+      </h3>
       <p>
         {{
           isSearching
             ? `没有笔记的标题或正文包含「${keyword.trim()}」，换个关键字试试。`
-            : '在笔记工作区选择一个知识点开始记录，或从本地导入 Markdown 文件。'
+            : activeTag
+              ? '给笔记添加这个标签后，它就会出现在这里。'
+              : '在笔记工作区选择一个知识点开始记录，或从本地导入 Markdown 文件。'
         }}
       </p>
-      <button v-if="isSearching" type="button" class="ghost-button" @click="clearSearch">
+      <button
+        v-if="isSearching"
+        type="button"
+        class="ghost-button"
+        @click="clearSearch"
+      >
         清空搜索条件
+      </button>
+      <button
+        v-else-if="activeTag"
+        type="button"
+        class="ghost-button"
+        @click="selectTag(null)"
+      >
+        查看全部笔记
       </button>
       <RouterLink v-else to="/notes" class="primary-button">
         <AppIcon name="notes" :size="16" />
@@ -212,6 +323,11 @@ onBeforeUnmount(() => {
         <button type="button" class="note-item__main" @click="openNote(note)">
           <span class="note-item__title">{{ note.title }}</span>
           <span class="note-item__excerpt">{{ note.excerpt || '（暂无正文）' }}</span>
+          <span v-if="note.tag_names.length" class="note-item__tags">
+            <span v-for="name in note.tag_names" :key="name" class="note-tag">
+              #{{ name }}
+            </span>
+          </span>
           <span class="note-item__meta">
             <span class="note-item__path">
               {{ note.course_name }} / {{ note.knowledge_point_title }}
@@ -270,20 +386,22 @@ onBeforeUnmount(() => {
   flex: 1 1 320px;
   gap: 8px;
   align-items: center;
-  max-width: 460px;
-  height: 36px;
+  max-width: 560px;
+  height: 38px;
   padding: 0 10px 0 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   transition:
+    background-color var(--transition-fast),
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
 .search-field:focus-within {
+  background: var(--color-surface);
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-soft);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .search-field__icon {
@@ -329,29 +447,93 @@ onBeforeUnmount(() => {
   font-size: 11.5px;
 }
 
+.tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  color: var(--color-text-secondary);
+  font-size: 11.5px;
+  white-space: nowrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.filter-chip:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.filter-chip.is-active {
+  color: var(--color-accent-strong);
+  font-weight: 500;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.filter-chip__count {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.filter-chip.is-active .filter-chip__count {
+  color: var(--color-accent-strong);
+}
+
+.filter-chip--link {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  border-style: dashed;
+}
+
+.note-item__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.note-tag {
+  padding: 0 7px;
+  color: var(--color-text-muted);
+  font-size: 10.5px;
+  line-height: 18px;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
 .note-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  border-top: 1px solid var(--color-border);
 }
 
 .note-item {
   display: flex;
-  gap: 14px;
+  gap: 20px;
   align-items: center;
-  padding: 14px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition:
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
+  padding: 18px 8px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
 }
 
-.note-item:hover {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-md);
+.note-item:hover,
+.note-item:focus-within {
+  background: var(--color-surface-hover);
 }
 
 .note-item__main {
@@ -416,6 +598,13 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
   gap: 6px;
   align-items: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.note-item:hover .note-item__actions,
+.note-item:focus-within .note-item__actions {
+  opacity: 1;
 }
 
 .action-button {
@@ -509,6 +698,12 @@ onBeforeUnmount(() => {
   text-underline-offset: 3px;
 }
 
+@media (hover: none) {
+  .note-item__actions {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 760px) {
   .note-item {
     flex-direction: column;
@@ -517,6 +712,7 @@ onBeforeUnmount(() => {
 
   .note-item__actions {
     justify-content: flex-end;
+    opacity: 1;
   }
 
   .search-field {

@@ -83,20 +83,13 @@ const isActive = computed(() => notes.selectedPointId === props.point.id)
 }
 
 .kp-row.is-active {
-  color: var(--color-accent-strong);
-  font-weight: 500;
-  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 600;
+  background: var(--color-surface-hover);
 }
 
 .kp-row.is-active::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  left: 2px;
-  width: 2px;
-  background: var(--color-accent);
-  border-radius: 2px;
+  display: none;
 }
 
 .kp-row:focus-visible {

@@ -54,6 +54,12 @@ pub struct KnowledgePointDetail {
     pub note_count: i64,
     /// 自身及全部后代知识点上的笔记数量（删除提示使用）
     pub subtree_note_count: i64,
+    /// 与该知识点相关的语义关联总数（出边 + 入边）
+    pub relation_count: i64,
+    /// 以该知识点为源点的关联数量
+    pub outgoing_relation_count: i64,
+    /// 以该知识点为目标点的关联数量
+    pub incoming_relation_count: i64,
 }
 
 /// 删除知识点的结果

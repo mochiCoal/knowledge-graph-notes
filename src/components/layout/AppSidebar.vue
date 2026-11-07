@@ -62,9 +62,9 @@ function isActive(path: string): boolean {
   flex-direction: column;
   width: var(--sidebar-width);
   height: 100%;
-  padding: 20px 14px 14px;
+  padding: 14px 10px 12px;
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--color-sidebar);
   border-right: 1px solid var(--color-border);
   transition: width var(--transition-base);
 }
@@ -77,21 +77,20 @@ function isActive(path: string): boolean {
 
 .sidebar__brand {
   display: flex;
-  gap: 11px;
+  gap: 10px;
   align-items: center;
-  padding: 2px 6px 22px;
+  padding: 2px 6px 20px;
 }
 
 .sidebar__mark {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  color: #fff;
-  background: var(--gradient-brand);
-  border-radius: 11px;
-  box-shadow: var(--shadow-accent);
+  width: 32px;
+  height: 32px;
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
+  border-radius: 7px;
 }
 
 .sidebar__brand-text {
@@ -129,15 +128,15 @@ function isActive(path: string): boolean {
 
 .nav-item {
   display: flex;
-  gap: 11px;
+  gap: 10px;
   align-items: center;
-  height: 40px;
-  padding: 0 10px;
+  height: 34px;
+  padding: 0 9px;
   color: var(--color-text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
-  border-radius: 10px;
+  border-radius: 6px;
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast);
@@ -149,9 +148,9 @@ function isActive(path: string): boolean {
 }
 
 .nav-item.is-active {
-  color: var(--color-accent-strong);
+  color: var(--color-text);
   font-weight: 600;
-  background: var(--color-accent-soft);
+  background: var(--color-surface-hover);
 }
 
 .nav-item__icon {
@@ -182,7 +181,6 @@ function isActive(path: string): boolean {
   height: 7px;
   background: var(--color-success);
   border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--color-success-soft);
 }
 
 .sidebar__footer-text {

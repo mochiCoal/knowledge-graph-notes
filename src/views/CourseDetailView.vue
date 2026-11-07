@@ -287,6 +287,20 @@ async function confirmDelete(): Promise<void> {
           <AppIcon name="arrow-right" :size="16" class="quick-card__arrow" />
         </RouterLink>
 
+        <RouterLink
+          :to="{ name: 'relations', query: { course: courseId } }"
+          class="quick-card"
+        >
+          <span class="quick-card__icon">
+            <AppIcon name="link" :size="19" />
+          </span>
+          <span class="quick-card__text">
+            <strong>知识关联</strong>
+            <span>建立前置、相关、对比等语义联系</span>
+          </span>
+          <AppIcon name="arrow-right" :size="16" class="quick-card__arrow" />
+        </RouterLink>
+
         <RouterLink to="/graph" class="quick-card">
           <span class="quick-card__icon">
             <AppIcon name="graph" :size="19" />

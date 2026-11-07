@@ -65,8 +65,8 @@ const collapseLabel = computed(() => (sidebarCollapsed.value ? '展开侧边栏'
   gap: 12px;
   align-items: center;
   height: var(--header-height);
-  padding: 0 18px 0 14px;
-  background: var(--color-surface);
+  padding: 0 20px 0 14px;
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   transition:
     background-color var(--transition-base),

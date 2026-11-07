@@ -33,9 +33,19 @@
   - Markdown 文件导入（预览标题与正文、选择目标知识点、覆盖提示）
   - 笔记导出为 `.md`（系统保存对话框，正文缺一级标题时自动补标题）
   - 笔记工作区：编辑 / 分屏 / 预览、800ms 自动保存、切换前落盘、删除二次确认
+- ✅ 阶段五：标签管理
+  - 标签管理页：搜索标签、新建 / 重命名 / 删除、查看每个标签下的笔记
+  - 笔记标签：编辑器右侧面板添加 / 移除标签，标签随笔记展示
+  - 按标签筛选：笔记库标签筛选条与 `?tag=` 深链，筛选可与关键字搜索组合
+- ✅ 阶段六：知识点关联
+  - 关联类型字典：前置 / 相关 / 包含 / 对比 / 延伸，可增改自定义类型与颜色
+  - 关联管理：手动创建、编辑类型与描述、按课程 / 知识点 / 类型查询、删除
+  - 一致性校验：阻止自关联、同类型重复关联与无向类型的反向重复
+  - 关联建议：融合标题、描述与笔记文本的本地相似度，展示得分与共同关键词理由，支持接受 / 拒绝
+  - 联动：笔记工作区侧栏展示相关知识点与建议，知识点 / 课程详情提供关联入口
 - ✅ 三档主题系统
   - 自动 / 日间 / 夜间主题，偏好持久化，自动模式跟随系统
-- ⏳ 标签管理（阶段五）、知识点关联与关联建议（阶段六）、知识图谱（阶段七）等仍待后续阶段
+- ⏳ 知识图谱（阶段七）等仍待后续阶段
 
 完整任务清单见 [task.md](./task.md)。
 
@@ -63,28 +73,37 @@ knowledge-graph-notes/
 │  │  │  ├─ KnowledgePointTree.vue         递归知识点树
 │  │  │  ├─ KnowledgePointFormDialog.vue   新建 / 编辑知识点弹窗
 │  │  │  └─ KnowledgePointDetailPanel.vue  知识点详情、层级调整与课程迁移
+│  │  ├─ tags/                  标签管理组件
+│  │  │  └─ TagFormDialog.vue            新建 / 重命名标签弹窗
+│  │  ├─ relations/             知识点关联组件
+│  │  │  ├─ RelationFormDialog.vue       新建 / 编辑关联弹窗
+│  │  │  └─ RelationTypeDialog.vue       关联类型管理弹窗
 │  │  └─ notes/                 笔记工作区组件
 │  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度、笔记库入口）
 │  │     ├─ KnowledgeTreeNode.vue   递归知识点树
 │  │     ├─ NoteWorkspace.vue       标题、编辑 / 分屏 / 预览、保存状态、导入导出
 │  │     ├─ MarkdownImportDialog.vue Markdown 导入弹窗（预览、目标知识点、覆盖提示）
-│  │     ├─ NoteMetaPanel.vue       所属知识点、标签、相关知识点
+│  │     ├─ NoteMetaPanel.vue       所属知识点、标签、相关知识点与关联建议
 │  │     ├─ SaveStatusIndicator.vue 保存状态
 │  │     └─ KnowledgePointFormDialog.vue 新建知识点弹窗
-│  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、笔记库、图谱、设置、404
+│  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、笔记库、标签管理、知识关联、图谱、设置、404
 │  ├─ router/                   路由表（meta 驱动导航 / 沉浸式页面）
 │  ├─ stores/
 │  │  ├─ app.ts                 应用级界面状态（侧边栏折叠）
 │  │  ├─ theme.ts               主题状态（唯一管理入口）
 │  │  ├─ courses.ts             课程列表与增删改查
 │  │  ├─ knowledgePoints.ts     知识点树、详情与增删改查
-│  │  ├─ notes.ts               笔记数据、草稿、自动保存
+│  │  ├─ notes.ts               笔记数据、草稿、自动保存与关联建议
+│  │  ├─ tags.ts                标签列表、搜索与标签笔记
+│  │  ├─ relations.ts           关联列表、类型、建议与增删改查
 │  │  └─ workspace.ts           笔记页布局偏好（宽度、面板、视图模式）
 │  ├─ services/
 │  │  ├─ tauri.ts               invoke 统一封装与错误类型
 │  │  ├─ courses.ts             课程 CRUD API
 │  │  ├─ knowledgePoints.ts     知识点树 / 详情 / 增删改查 / 层级调整 API
-│  │  ├─ notes.ts               知识点 / 笔记 / 标签 / 关联 / 搜索 / 导入导出 API
+│  │  ├─ notes.ts               知识点 / 笔记 / 搜索 / 导入导出 API
+│  │  ├─ tags.ts                标签增删改查与笔记标签关联 API
+│  │  ├─ relations.ts           关联、关联类型与关联建议 API
 │  │  ├─ markdownFiles.ts       系统文件选择框与 Markdown 导出封装
 │  │  └─ theme.ts               主题读取、解析、持久化
 │  ├─ utils/                    Markdown 渲染、时间与字数格式化
@@ -97,10 +116,11 @@ knowledge-graph-notes/
 │  ├─ src/
 │  │  ├─ commands/              命令层：course / knowledge_point / note / tag / relation
 │  │  ├─ models/                数据模型：与表结构一一对应
-│  │  ├─ db/mod.rs              SQLite 连接与初始化
+│  │  ├─ db/mod.rs              SQLite 连接与迁移执行
 │  │  ├─ lib.rs                 应用入口与命令注册
 │  │  └─ main.rs
 │  ├─ migrations/001_initial.sql
+│  ├─ migrations/002_relations.sql
 │  ├─ capabilities/default.json
 │  └─ tauri.conf.json
 ├─ public/
@@ -199,16 +219,17 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 
 - 所属知识点与课程、更新时间、字数；
 - 笔记标签：输入名称添加，已有标签可通过 datalist 快速选择，点击 × 移除；
-- 相关知识点：读取 `knowledge_relations`，点击可跳转到对应知识点；
-- 关联建议：阶段六接入，目前为说明性占位；
+- 相关知识点：读取 `knowledge_relations`，显示关联类型与颜色，点击可跳转到对应知识点；
+- 关联建议：展示后端根据名称、描述与笔记内容生成的候选、相似度与推荐理由，可直接接受或忽略；
 - 顶部 × 或工具栏按钮可隐藏面板，把空间让给编辑区。
 
 ## 笔记库
 
 `/note-library` 是笔记视角的集中入口，与按知识点组织的笔记工作区互补：
 
-- 列出全部笔记，展示标题、正文摘要、所属课程 / 知识点、字数与更新时间；
+- 列出全部笔记，展示标题、正文摘要、所属课程 / 知识点、标签、字数与更新时间；
 - 顶部搜索框按标题与正文检索（300ms 防抖，标题命中的结果排在前面），支持一键清空；
+- 标签筛选条按标签过滤笔记，可与关键字搜索组合使用；筛选条件写入路由（`/note-library?tag=<id>`），可从标签管理页直接带标签进入；
 - 点击笔记或「打开」跳转到笔记工作区并选中对应知识点；
 - 「导出」弹出系统保存框，把笔记写成 `.md` 文件（正文缺少一级标题时自动补上笔记标题）；
 - 「导入 Markdown」选择本地文件后，可预览正文、修改标题、选择目标知识点；目标知识点已有笔记时会提示将被覆盖；
@@ -216,26 +237,51 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 
 导入解析规则：文件首行的 `# 一级标题` 会作为笔记标题并从正文移除；没有一级标题时使用文件名；仅支持 UTF-8 文本，文件上限 2 MB。
 
+## 标签管理
+
+`/tags` 用标签给笔记分类，并在标签视角下检索笔记：
+
+- 左侧标签列表显示每个标签的关联笔记数量，支持按名称搜索（250ms 防抖）；
+- 新建标签（同名标签会复用已有记录）、重命名标签（同名会拦截）、删除标签（二次确认，提示会影响多少条笔记，笔记本身不会被删除）；
+- 右侧展示选中标签下的笔记，点击可直接打开到笔记工作区；底部可跳转笔记库并带上标签筛选；
+- 笔记工作区的右侧辅助面板可以给当前笔记添加 / 移除标签，并跳转到标签管理页。
+
+## 知识点关联
+
+`/relations` 用于建立和浏览知识点之间的语义关联，与父子层级相互独立：
+
+- 左侧按课程筛选知识点并显示每个知识点的关联数量，支持按名称 / 描述搜索；
+- 中间展示当前知识点的关联：类型标签（含颜色与有向 / 无向）、两端知识点、描述、课程路径，可编辑类型与描述、删除关联；
+- 顶部「新建关联」可跨课程选择源 / 目标知识点与关联类型；后端阻止自关联、同类型重复关联，以及无向类型的反向重复；
+- 「关联类型」弹窗维护类型字典：内置前置、相关、包含、对比、延伸，可改名 / 换色 / 调整有向性，或新增自定义类型；内置与被使用的类型不允许删除；
+- 右侧关联建议只比较同一课程内的知识点，已有正式关联、已接受或已拒绝的知识点对会被排除；接受后写入正式关联，拒绝后不再重复推荐；
+- 知识点详情面板展示语义关联数量并提供入口，笔记工作区侧栏也会展示当前知识点的相关知识点与建议。
+
+关联建议完全本地计算，不依赖网络或大模型：名称、描述、笔记正文分别做中文二元字组 / 英文单词切分，按 `0.45·名称余弦 + 0.25·描述余弦 + 0.20·笔记余弦 + 0.10·Jaccard` 融合得分，超过阈值后取 Top-K，并把共同关键词整理成推荐理由。每个知识点的笔记文本截断到 3000 字，建议结果以无序知识点对唯一保存。
+
 ## 后端命令
 
-为支撑课程管理与笔记工作区的真实数据读写，当前注册的命令如下（**未修改数据库结构**，数据库仍使用 `001_initial.sql`）：
+为支撑各模块的真实数据读写，当前注册的命令如下（数据库结构由 `001_initial.sql` + `002_relations.sql` 两个迁移维护）：
 
 | 模块 | 命令 |
 | --- | --- |
 | 课程 | `list_courses` / `get_course` / `create_course` / `update_course` / `delete_course` |
 | 知识点 | `list_knowledge_points` / `list_knowledge_points_by_course` / `get_knowledge_point_tree` / `get_knowledge_point_detail` / `create_knowledge_point` / `update_knowledge_point` / `move_knowledge_point` / `move_knowledge_point_to_course` / `delete_knowledge_point` |
 | 笔记 | `get_note` / `save_note` / `delete_note` / `list_notes` / `search_notes` / `export_note_markdown` / `read_markdown_file` |
-| 标签 | `list_tags` / `create_tag` / `list_note_tags` / `attach_note_tag` / `detach_note_tag` |
-| 关联 | `list_relations` |
+| 标签 | `list_tags` / `list_tag_overview` / `search_tags` / `create_tag` / `update_tag` / `delete_tag` / `list_note_tags` / `attach_note_tag` / `detach_note_tag` |
+| 关联 | `list_relations` / `list_relation_details` / `list_relation_details_for_point` / `list_relation_details_by_course` / `create_relation` / `update_relation` / `delete_relation` |
+| 关联类型 | `list_relation_types` / `create_relation_type` / `update_relation_type` / `delete_relation_type` |
+| 关联建议 | `generate_relation_suggestions` / `list_relation_suggestions` / `accept_relation_suggestion` / `reject_relation_suggestion` |
 
-课程、知识点与笔记命令已具备完整 CRUD、后端校验与文件读写；标签筛选与知识点关联属于后续阶段。
+课程、知识点、笔记、标签与关联命令均具备完整 CRUD、后端校验与所需的事务 / 约束处理。
 
 > Markdown 导入 / 导出使用 `tauri-plugin-dialog` 调用系统文件选择框，权限为 `src-tauri/capabilities/default.json` 中的 `dialog:default`；文件读写本身由 Rust 命令完成，不依赖前端文件系统插件。
 
 ## 数据库
 
 - 位置：Tauri `app_data_dir()` 下的 `knowledge_graph.db`（Windows 一般为 `%APPDATA%\<应用标识>\knowledge_graph.db`）。
-- 启动时由 `db::initialize_database()` 执行 `migrations/001_initial.sql` 建表，并开启外键约束。
+- 启动时由 `db::initialize_database()` 按顺序执行 `migrations/001_initial.sql` 与 `migrations/002_relations.sql`，并开启外键约束；迁移均使用 `IF NOT EXISTS` / `INSERT OR IGNORE`，可安全重放。
+- `knowledge_relations` 通过 `CHECK (source_id <> target_id)` 与 `UNIQUE (source_id, target_id, relation_type)` 在数据库层阻止自关联和重复关联；`relation_types` 维护类型名称、颜色、是否有向；`relation_suggestions` 以无序知识点对唯一保存建议状态（pending / accepted / rejected）。
 - 时间字段统一以 ISO 8601 字符串存储；前端 `types` 中的字段名与表结构、Rust serde 输出保持一致（snake_case）。
 
 ## 开发约定

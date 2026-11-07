@@ -102,13 +102,14 @@ function handleBeforeEnter(): void {
 
 .app-content {
   flex: 1;
-  padding: 26px 24px 48px;
+  padding: 38px 48px 72px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .app-content__inner {
   width: 100%;
-  max-width: 1080px;
+  max-width: 1160px;
   margin: 0 auto;
 }
 
@@ -121,5 +122,18 @@ function handleBeforeEnter(): void {
 .app-content__inner--flush {
   height: 100%;
   max-width: none;
+}
+
+@media (max-width: 800px) {
+  .app-content {
+    padding: 28px 24px 56px;
+    scrollbar-gutter: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-content {
+    padding: 24px 16px 48px;
+  }
 }
 </style>
