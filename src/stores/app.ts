@@ -22,11 +22,12 @@ function persistCollapsed(collapsed: boolean): void {
 /**
  * 应用级界面状态。
  *
- * 目前只管理侧边栏折叠，并持久化到 localStorage；
- * 后续的主题、最近访问、全局搜索面板等界面状态也放在这里。
+ * 管理侧边栏折叠（持久化到 localStorage）与全局搜索面板的开关；
+ * 搜索面板由 AppLayout 挂载，任何页面都可以通过 `openSearch()` 打开。
  */
 export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(readStoredCollapsed())
+  const searchOpen = ref(false)
 
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value
@@ -36,11 +37,27 @@ export const useAppStore = defineStore('app', () => {
     sidebarCollapsed.value = collapsed
   }
 
+  function openSearch(): void {
+    searchOpen.value = true
+  }
+
+  function closeSearch(): void {
+    searchOpen.value = false
+  }
+
+  function toggleSearch(): void {
+    searchOpen.value = !searchOpen.value
+  }
+
   watch(sidebarCollapsed, persistCollapsed)
 
   return {
     sidebarCollapsed,
+    searchOpen,
     toggleSidebar,
     setSidebarCollapsed,
+    openSearch,
+    closeSearch,
+    toggleSearch,
   }
 })

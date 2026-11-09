@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use rusqlite::{params, Connection, OptionalExtension, Row};
+use rusqlite::{Connection, OptionalExtension, Row, params};
 use tauri::AppHandle;
 use uuid::Uuid;
 
 use crate::db::{db_error, escape_like, get_connection};
 use crate::models::note::{MarkdownFile, Note, NoteSummary};
+use crate::text::{count_characters, excerpt, truncate_chars};
 
 /// 笔记标题最大长度（与前端输入框限制一致）
 const NOTE_TITLE_MAX: usize = 200;
@@ -58,74 +59,13 @@ fn map_note_summary(row: &Row<'_>) -> rusqlite::Result<NoteSummary> {
     })
 }
 
-/// 统计正文字符数（忽略空白，与前端 `countCharacters` 保持一致）
-fn count_characters(text: &str) -> i64 {
-    text.chars().filter(|ch| !ch.is_whitespace()).count() as i64
-}
-
-fn truncate_chars(text: &str, limit: usize) -> String {
-    if text.chars().count() <= limit {
-        return text.to_string();
-    }
-
-    let mut truncated: String = text.chars().take(limit).collect();
-    truncated.push('…');
-    truncated
-}
-
-/// 生成列表摘要：去掉常见 Markdown 标记、折叠空白并截断
-fn excerpt(content: &str, limit: usize) -> String {
-    let mut buffer = String::new();
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        // 纯分隔线（--- / *** / ___）没有摘要价值
-        if trimmed.chars().count() >= 3
-            && trimmed
-                .chars()
-                .all(|ch| matches!(ch, '-' | '*' | '_' | '='))
-        {
-            continue;
-        }
-
-        let stripped = trimmed.trim_start_matches(|ch: char| {
-            matches!(ch, '#' | '>' | '-' | '*' | '+' | '|' | '`' | ' ')
-        });
-        let cleaned: String = stripped
-            .chars()
-            .filter(|ch| !matches!(ch, '`' | '*'))
-            .collect();
-        let cleaned = cleaned.trim();
-        if cleaned.is_empty() {
-            continue;
-        }
-
-        if !buffer.is_empty() {
-            buffer.push(' ');
-        }
-        buffer.push_str(cleaned);
-
-        if buffer.chars().count() >= limit * 2 {
-            break;
-        }
-    }
-
-    truncate_chars(&buffer, limit)
-}
-
 fn query_summaries(
     conn: &Connection,
     sql: &str,
     params: impl rusqlite::Params,
 ) -> Result<Vec<NoteSummary>, String> {
     let mut summaries = {
-        let mut stmt = conn
-            .prepare(sql)
-            .map_err(|e| db_error("读取笔记列表", e))?;
+        let mut stmt = conn.prepare(sql).map_err(|e| db_error("读取笔记列表", e))?;
 
         stmt.query_map(params, map_note_summary)
             .map_err(|e| db_error("读取笔记列表", e))?
@@ -143,10 +83,7 @@ fn attach_tag_names(conn: &Connection, summaries: &mut [NoteSummary]) -> Result<
         return Ok(());
     }
 
-    let ids: HashSet<String> = summaries
-        .iter()
-        .map(|summary| summary.id.clone())
-        .collect();
+    let ids: HashSet<String> = summaries.iter().map(|summary| summary.id.clone()).collect();
 
     let mut stmt = conn
         .prepare(
@@ -222,7 +159,11 @@ fn list_summaries(
 
     let sql = format!("{NOTE_SUMMARY_SELECT} {where_sql} {order_sql}");
 
-    query_summaries(conn, &sql, rusqlite::params_from_iter(values.iter().map(String::as_str)))
+    query_summaries(
+        conn,
+        &sql,
+        rusqlite::params_from_iter(values.iter().map(String::as_str)),
+    )
 }
 
 fn point_title(conn: &Connection, knowledge_point_id: &str) -> Result<String, String> {
@@ -270,8 +211,7 @@ fn write_markdown(note: &Note, path: &Path) -> Result<(), String> {
         return Err("目标文件夹不存在，请重新选择保存位置".into());
     }
 
-    std::fs::write(path, compose_markdown(note))
-        .map_err(|e| format!("写入 Markdown 文件失败：{e}"))
+    std::fs::write(path, compose_markdown(note)).map_err(|e| format!("写入 Markdown 文件失败：{e}"))
 }
 
 /// 读取并解析 Markdown 文件：首行一级标题作为笔记标题，其余内容作为正文

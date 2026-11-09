@@ -7,10 +7,13 @@
 //! 2. 查询结果结构体实现 `serde::Serialize`，写入参数实现 `serde::Deserialize`；
 //! 3. 时间字段以 ISO 8601 字符串存储，与 `chrono` 序列化格式保持一致。
 //!
-//! 当前已实现：课程、知识点、笔记、标签、知识点关联。
+//! 当前已实现：课程、知识点、笔记、标签、知识点关联，以及首页、搜索与备份结果结构。
 
+pub mod backup;
 pub mod course;
+pub mod dashboard;
 pub mod knowledge_point;
 pub mod note;
 pub mod relation;
+pub mod search;
 pub mod tag;

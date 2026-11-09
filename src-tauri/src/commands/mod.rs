@@ -8,11 +8,14 @@
 //! 2. 统一返回 `Result<T, String>`，错误信息使用中文，前端可直接展示；
 //! 3. 新增命令后必须在 `lib.rs` 的 `invoke_handler` 中注册，否则前端调用会报错。
 //!
-//! 当前已实现：课程、知识点的完整增删改查（含知识点层级查询与课程迁移），
-//! 以及笔记、标签、知识点关联（类型管理、关联增删改查、关联建议）的基础命令。
+//! 当前已实现：课程、知识点、笔记、标签、知识点关联的完整命令，
+//! 以及首页概览、全局搜索与数据库备份 / 恢复等辅助能力。
 
+pub mod backup;
 pub mod course;
+pub mod dashboard;
 pub mod knowledge_point;
 pub mod note;
 pub mod relation;
+pub mod search;
 pub mod tag;

@@ -17,6 +17,24 @@ export default defineConfig(() => ({
     },
   },
 
+  build: {
+    rollupOptions: {
+      output: {
+        // 把体积较大的第三方库拆成独立分块：
+        // 首屏只加载 vue 框架与首页，图谱 / Markdown 引擎随懒加载页面按需加载；
+        // 业务代码更新后 vendor 分块哈希不变，二次启动可直接命中缓存。
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@vue-flow")) return "graph";
+          if (id.includes("markdown-it")) return "markdown";
+          if (/node_modules[\\/](?:vue|@vue|pinia|vue-router)[\\/]/.test(id)) {
+            return "vue";
+          }
+        },
+      },
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

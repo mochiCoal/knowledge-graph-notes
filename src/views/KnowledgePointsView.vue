@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -67,6 +67,18 @@ onMounted(async () => {
     await store.selectPoint(pointId)
   }
 })
+
+// 全局搜索等入口在知识点页内跳到同一课程的另一个知识点时，
+// 路由复用组件，需要监听 query 变化。
+watch(
+  () => route.query.point,
+  (value) => {
+    const pointId = typeof value === 'string' ? value : ''
+    if (pointId && pointId !== store.selectedId) {
+      void store.selectPoint(pointId)
+    }
+  },
+)
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)

@@ -46,6 +46,26 @@ export interface KnowledgePointNode extends KnowledgePoint {
   children: KnowledgePointNode[]
 }
 
+/** 知识图谱中的知识点（由树节点扁平化而来） */
+export interface GraphPoint extends KnowledgePoint {
+  /** 层级深度，顶层为 0 */
+  depth: number
+  /** 直接子知识点数量 */
+  child_count: number
+  /** 直接挂在该知识点上的笔记数量 */
+  note_count: number
+}
+
+/** 知识图谱的两种布局 */
+export type GraphLayoutMode = 'hierarchy' | 'force'
+
+/** 自定义图谱节点携带的数据 */
+export interface GraphNodeData {
+  point: GraphPoint
+  /** 参与当前图谱绘制的语义关联数量 */
+  relationCount: number
+}
+
 /** 知识点详情面包屑中的单个节点 */
 export interface KnowledgePointPathItem {
   id: string
@@ -208,4 +228,102 @@ export type EditorMode = 'edit' | 'split' | 'preview'
 
 /** 笔记保存状态 */
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
+
+/** 首页概览统计（后端 `get_dashboard_overview` 返回） */
+export interface DashboardStats {
+  course_count: number
+  knowledge_point_count: number
+  note_count: number
+  tag_count: number
+  relation_count: number
+}
+
+/** 首页「最近编辑」中的笔记 */
+export interface RecentNote {
+  id: string
+  knowledge_point_id: string
+  title: string
+  /** 正文摘要（已去除常见 Markdown 标记并截断） */
+  excerpt: string
+  knowledge_point_title: string
+  course_id: string
+  course_name: string
+  character_count: number
+  updated_at: string
+}
+
+/** 首页「最近创建的知识点」 */
+export interface RecentKnowledgePoint {
+  id: string
+  course_id: string
+  course_name: string
+  title: string
+  /** 描述摘要 */
+  excerpt: string
+  parent_id: string | null
+  /** 从顶层知识点到父知识点的路径（不含自身） */
+  path: string[]
+  note_count: number
+  created_at: string
+}
+
+/** 首页概览数据 */
+export interface DashboardOverview extends DashboardStats {
+  recent_notes: RecentNote[]
+  recent_points: RecentKnowledgePoint[]
+}
+
+/** 全局搜索命中的实体类型 */
+export type SearchHitKind = 'course' | 'knowledge_point' | 'note' | 'tag' | 'relation'
+
+/** 全局搜索的单条结果 */
+export interface SearchHit {
+  id: string
+  kind: SearchHitKind
+  title: string
+  /** 所属课程 / 层级路径 / 标签使用量等说明 */
+  subtitle: string
+  /** 命中内容片段 */
+  excerpt: string
+  course_id: string | null
+  knowledge_point_id: string | null
+  updated_at: string | null
+}
+
+/** 全局搜索结果（按实体类型分组） */
+export interface GlobalSearchResult {
+  query: string
+  /** 所有分组的结果总数 */
+  total: number
+  courses: SearchHit[]
+  knowledge_points: SearchHit[]
+  notes: SearchHit[]
+  tags: SearchHit[]
+  relations: SearchHit[]
+}
+
+/** 数据库文件与数据量信息 */
+export interface DatabaseInfo extends DashboardStats {
+  path: string
+  directory: string
+  size_bytes: number
+  modified_at: string | null
+  sqlite_version: string
+}
+
+/** 数据库备份结果 */
+export interface BackupResult {
+  path: string
+  size_bytes: number
+  created_at: string
+}
+
+/** 数据库恢复结果 */
+export interface RestoreResult {
+  source_path: string
+  /** 恢复前自动保存的安全副本 */
+  safety_backup_path: string
+  restored_at: string
+  database: DatabaseInfo
+}
 

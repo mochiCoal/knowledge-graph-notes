@@ -36,5 +36,6 @@ const emit = defineEmits<{ cancel: []; confirm: [] }>()
   color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 </style>

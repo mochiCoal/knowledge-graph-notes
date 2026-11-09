@@ -1,8 +1,16 @@
+<script lang="ts">
+/**
+ * 模块级弹窗打开顺序栈（所有 BaseModal 实例共享）。
+ * 组件常挂载、`open` 切换显隐，也可能多层叠加（例如表单弹窗上再开确认框）。
+ */
+const openStack: symbol[] = []
+</script>
+
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     open: boolean
     title: string
@@ -16,12 +24,29 @@ withDefaults(
 
 const emit = defineEmits<{ close: [] }>()
 
+const modalId = Symbol('modal')
+
+function syncOpenState(open: boolean): void {
+  const index = openStack.indexOf(modalId)
+  if (open && index === -1) openStack.push(modalId)
+  if (!open && index !== -1) openStack.splice(index, 1)
+}
+
+watch(() => props.open, syncOpenState, { immediate: true })
+
+// 只有位于栈顶（最上层）的弹窗才响应 Esc，
+// 避免按一次 Esc 关掉所有弹窗、或关闭根本没打开的弹窗。
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') emit('close')
+  if (event.key !== 'Escape') return
+  if (openStack[openStack.length - 1] !== modalId) return
+  emit('close')
 }
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  syncOpenState(false)
+})
 </script>
 
 <template>

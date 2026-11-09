@@ -1,6 +1,8 @@
 mod commands;
 mod db;
 mod models;
+mod point_path;
+mod text;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -13,8 +15,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            db::initialize_database(app.handle())
-                .map_err(std::io::Error::other)?;
+            db::initialize_database(app.handle()).map_err(std::io::Error::other)?;
 
             Ok(())
         })
@@ -65,6 +66,11 @@ pub fn run() {
             commands::relation::list_relation_suggestions,
             commands::relation::accept_relation_suggestion,
             commands::relation::reject_relation_suggestion,
+            commands::dashboard::get_dashboard_overview,
+            commands::search::global_search,
+            commands::backup::get_database_info,
+            commands::backup::backup_database,
+            commands::backup::restore_database,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
+import GlobalSearchPalette from '@/components/search/GlobalSearchPalette.vue'
 import { useAppStore } from '@/stores/app'
 
 const route = useRoute()
@@ -50,6 +51,23 @@ applyRouteLayout()
 function handleBeforeEnter(): void {
   contentRef.value?.scrollTo({ top: 0 })
 }
+
+/** Ctrl + K / Cmd + K 打开或关闭全局搜索；搜索打开时 Esc 也能关闭 */
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && appStore.searchOpen) {
+    event.preventDefault()
+    appStore.closeSearch()
+    return
+  }
+
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return
+
+  event.preventDefault()
+  appStore.toggleSearch()
+}
+
+onMounted(() => document.addEventListener('keydown', handleGlobalKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', handleGlobalKeydown))
 </script>
 
 <template>
@@ -81,6 +99,8 @@ function handleBeforeEnter(): void {
         </div>
       </main>
     </div>
+
+    <GlobalSearchPalette :open="appStore.searchOpen" @close="appStore.closeSearch()" />
   </div>
 </template>
 

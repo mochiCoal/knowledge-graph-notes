@@ -160,13 +160,9 @@ const maximizeLabel = computed(() => (isMaximized.value ? '还原' : '最大化'
   align-items: center;
   height: 36px;
   padding-left: 12px;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  background: transparent;
   user-select: none;
   -webkit-user-select: none;
-  transition:
-    background-color var(--transition-base),
-    border-color var(--transition-base);
 }
 
 .title-bar__brand {

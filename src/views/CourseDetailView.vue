@@ -301,13 +301,16 @@ async function confirmDelete(): Promise<void> {
           <AppIcon name="arrow-right" :size="16" class="quick-card__arrow" />
         </RouterLink>
 
-        <RouterLink to="/graph" class="quick-card">
+        <RouterLink
+          :to="{ name: 'graph', query: { course: courseId } }"
+          class="quick-card"
+        >
           <span class="quick-card__icon">
             <AppIcon name="graph" :size="19" />
           </span>
           <span class="quick-card__text">
             <strong>知识图谱</strong>
-            <span>查看知识点之间的语义关联</span>
+            <span>查看课程知识结构与语义关联网络</span>
           </span>
           <AppIcon name="arrow-right" :size="16" class="quick-card__arrow" />
         </RouterLink>

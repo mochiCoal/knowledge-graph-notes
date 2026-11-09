@@ -14,7 +14,7 @@
 | 后端 | Rust + rusqlite |
 | 数据库 | SQLite（本地文件） |
 | Markdown | markdown-it 渲染；导入导出使用系统文件对话框（`tauri-plugin-dialog`） |
-| 知识图谱 | Vue Flow（阶段七接入） |
+| 知识图谱 | Vue Flow（层次布局 / 力导向布局） |
 
 ## 当前进度
 
@@ -43,9 +43,19 @@
   - 一致性校验：阻止自关联、同类型重复关联与无向类型的反向重复
   - 关联建议：融合标题、描述与笔记文本的本地相似度，展示得分与共同关键词理由，支持接受 / 拒绝
   - 联动：笔记工作区侧栏展示相关知识点与建议，知识点 / 课程详情提供关联入口
+- ✅ 阶段七：知识图谱
+  - Vue Flow 画布：知识点节点、层级虚线、按类型着色的语义关联连线（有向关系带箭头）
+  - 交互：节点拖拽、滚轮缩放、空白拖动平移、点击节点查看详情、自动适配视图
+  - 筛选：按课程、层级上限、关联类型筛选，层级连线 / 关系标签开关
+  - 布局：层次树布局与确定性力导向布局切换，重新布局与数据刷新
+  - 联动：详情面板可跳转笔记、知识点管理与知识关联页
 - ✅ 三档主题系统
   - 自动 / 日间 / 夜间主题，偏好持久化，自动模式跟随系统
-- ⏳ 知识图谱（阶段七）等仍待后续阶段
+- ✅ 阶段八：首页与辅助功能
+  - 首页统计课程 / 知识点 / 笔记 / 标签 / 关联数量，展示最近编辑的笔记与最近创建的知识点
+  - 全局搜索面板（顶栏入口 / Ctrl + K）：课程、知识点、笔记、标签与知识点关联分组结果，支持键盘选择与页面跳转
+  - 设置页：数据库路径、大小、记录数与 SQLite 版本，数据库备份 / 恢复（恢复前自动生成安全副本），以及关于信息
+- ⏳ 测试与优化（阶段九）、应用打包（阶段十）仍待后续阶段
 
 完整任务清单见 [task.md](./task.md)。
 
@@ -78,6 +88,12 @@ knowledge-graph-notes/
 │  │  ├─ relations/             知识点关联组件
 │  │  │  ├─ RelationFormDialog.vue       新建 / 编辑关联弹窗
 │  │  │  └─ RelationTypeDialog.vue       关联类型管理弹窗
+│  │  ├─ graph/                 知识图谱组件
+│  │  │  ├─ GraphCanvas.vue             Vue Flow 画布、缩放平移、布局与图例
+│  │  │  ├─ GraphNode.vue               知识点节点
+│  │  │  └─ GraphDetailPanel.vue        节点详情与联动入口
+│  │  ├─ search/                全局搜索
+│  │  │  └─ GlobalSearchPalette.vue     Ctrl + K 搜索面板、分组结果与键盘导航
 │  │  └─ notes/                 笔记工作区组件
 │  │     ├─ NotesSidebar.vue        课程与知识点目录（新建入口、拖拽宽度、笔记库入口）
 │  │     ├─ KnowledgeTreeNode.vue   递归知识点树
@@ -89,13 +105,14 @@ knowledge-graph-notes/
 │  ├─ views/                    首页、课程、课程详情、知识点管理、笔记、笔记库、标签管理、知识关联、图谱、设置、404
 │  ├─ router/                   路由表（meta 驱动导航 / 沉浸式页面）
 │  ├─ stores/
-│  │  ├─ app.ts                 应用级界面状态（侧边栏折叠）
+│  │  ├─ app.ts                 应用级界面状态（侧边栏折叠、全局搜索开关）
 │  │  ├─ theme.ts               主题状态（唯一管理入口）
 │  │  ├─ courses.ts             课程列表与增删改查
 │  │  ├─ knowledgePoints.ts     知识点树、详情与增删改查
 │  │  ├─ notes.ts               笔记数据、草稿、自动保存与关联建议
 │  │  ├─ tags.ts                标签列表、搜索与标签笔记
 │  │  ├─ relations.ts           关联列表、类型、建议与增删改查
+│  │  ├─ graph.ts               图谱课程树、筛选、布局与选中状态
 │  │  └─ workspace.ts           笔记页布局偏好（宽度、面板、视图模式）
 │  ├─ services/
 │  │  ├─ tauri.ts               invoke 统一封装与错误类型
@@ -104,9 +121,12 @@ knowledge-graph-notes/
 │  │  ├─ notes.ts               知识点 / 笔记 / 搜索 / 导入导出 API
 │  │  ├─ tags.ts                标签增删改查与笔记标签关联 API
 │  │  ├─ relations.ts           关联、关联类型与关联建议 API
+│  │  ├─ dashboard.ts           首页统计、最近笔记与最近知识点 API
+│  │  ├─ search.ts              全局搜索 API
+│  │  ├─ database.ts            数据库信息、备份 / 恢复与系统文件对话框
 │  │  ├─ markdownFiles.ts       系统文件选择框与 Markdown 导出封装
 │  │  └─ theme.ts               主题读取、解析、持久化
-│  ├─ utils/                    Markdown 渲染、时间与字数格式化
+│  ├─ utils/                    Markdown 渲染、时间 / 字数 / 文件大小格式化、图谱布局算法
 │  ├─ types/                    领域模型、RouteMeta 扩展
 │  ├─ styles/                   设计令牌、基础样式、Markdown 样式
 │  ├─ config.ts                 应用名称、版本
@@ -114,9 +134,11 @@ knowledge-graph-notes/
 │  └─ main.ts
 ├─ src-tauri/                   后端
 │  ├─ src/
-│  │  ├─ commands/              命令层：course / knowledge_point / note / tag / relation
+│  │  ├─ commands/              命令层：course / knowledge_point / note / tag / relation / dashboard / search / backup
 │  │  ├─ models/                数据模型：与表结构一一对应
-│  │  ├─ db/mod.rs              SQLite 连接与迁移执行
+│  │  ├─ db/mod.rs              SQLite 连接、迁移执行与表数据量统计
+│  │  ├─ text.rs                摘要、字符统计与搜索片段
+│  │  ├─ point_path.rs          知识点层级路径
 │  │  ├─ lib.rs                 应用入口与命令注册
 │  │  └─ main.rs
 │  ├─ migrations/001_initial.sql
@@ -161,6 +183,24 @@ knowledge-graph-notes/
 2. 首页、课程、笔记等其它页面不再出现主题切换入口；
 3. 选择「自动」后，在 Windows 设置 → 个性化 → 颜色 中切换浅色 / 深色，应用会跟随变化；
 4. 重启应用后仍保留上次选择（`localStorage` 持久化）。
+
+## 首页
+
+`/` 是知识库的概览页，数据全部来自后端 `get_dashboard_overview` 的一次聚合查询：
+
+- 顶部统计课程、知识点、笔记、标签与知识点关联数量，点击可进入对应模块；
+- 「最近编辑的笔记」按 `updated_at` 倒序展示 5 条，带正文摘要、所属课程 / 知识点、更新时间与字数，点击直接打开笔记工作区；
+- 「最近创建的知识点」按 `created_at` 倒序展示 5 条，带所属课程与父级路径、创建时间与笔记数量，点击进入知识点管理并选中该知识点；
+- 右侧提供全局搜索入口、快速访问与数据备份提示；加载中显示骨架屏，读取失败时保留错误提示与重试按钮。
+
+## 全局搜索
+
+顶栏搜索按钮与 `Ctrl + K`（macOS 为 `Cmd + K`）可在任意页面唤起全局搜索面板：
+
+- 输入关键字后 220ms 防抖调用 `global_search`，同时检索课程名称 / 描述、知识点标题 / 描述、笔记标题 / 正文、标签名称与知识点关联（描述、两端标题、类型）；
+- 结果按「课程 / 知识点 / 笔记 / 标签 / 知识关联」分组，展示所属课程与层级路径、笔记正文命中片段、标签使用数量与关联类型；
+- 支持 `↑` / `↓` 在全部结果间连续移动、`Enter` 打开、`Esc` 关闭；点击结果跳转到课程详情、知识点管理、笔记工作区、笔记库标签筛选或知识关联页；
+- 关键字中的 `%` / `_` 按字面量处理；空关键字不会发起查询，输入过程使用请求序号丢弃过期结果。
 
 ## 课程管理
 
@@ -259,6 +299,31 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 
 关联建议完全本地计算，不依赖网络或大模型：名称、描述、笔记正文分别做中文二元字组 / 英文单词切分，按 `0.45·名称余弦 + 0.25·描述余弦 + 0.20·笔记余弦 + 0.10·Jaccard` 融合得分，超过阈值后取 Top-K，并把共同关键词整理成推荐理由。每个知识点的笔记文本截断到 3000 字，建议结果以无序知识点对唯一保存。
 
+## 知识图谱
+
+`/graph` 是沉浸式图谱页，把课程知识点与语义关联放在同一张可交互画布中：
+
+- 节点来自当前课程的知识点树，展示标题、层级、子项数、笔记数与关联数量；
+- 父子层级生成灰色虚线边；语义关联生成按类型着色的实线边，有向类型（前置 / 包含 / 延伸）带箭头；
+- 交互：拖动节点调整位置、滚轮缩放、拖拽空白平移、点击节点查看详情，右下角提供缩放与适配视图按钮，右上角「重新布局」恢复自动布局；
+- 筛选：课程切换、层级上限（全部 / 仅顶层 / 前 N 层）、关联类型多选、层级连线开关、关系标签开关；
+- 布局：层次树布局把层级放在横轴、同级兄弟放在纵轴，并按子树高度排布；关系网络使用确定性力导向模拟，层级边与语义边共同作为弹簧，节点位置可复现；
+- 详情面板展示知识点路径、子项 / 笔记 / 关联统计、描述与关联列表，可跳转到笔记工作区、知识点管理或知识关联页；
+- 数据刷新从 SQLite 重新读取知识点树、关联与类型，保留当前课程、筛选与选中节点。
+
+图谱只绘制所选课程内部两端都可见的关联；跨课程关联仍在知识关联页管理。布局算法位于 [`src/utils/graphLayout.ts`](src/utils/graphLayout.ts)，不依赖额外布局库，节点规模增大时可在阶段九替换为增量布局或 Web Worker。
+
+## 设置与数据备份
+
+`/settings` 集中管理外观、数据库与搜索入口：
+
+- 「外观」保留自动 / 日间 / 夜间主题切换与当前生效配色说明；
+- 「数据与备份」显示数据库文件路径、文件大小、最后修改时间、SQLite 版本与各表记录数，并提供「备份数据库」「恢复数据库」「在文件夹中显示」；
+- 备份：系统保存对话框选择位置后，Rust 端用 `VACUUM INTO` 写入同目录临时文件，校验通过后再替换目标文件（目标已存在时覆盖），返回实际路径与大小；
+- 恢复：系统打开对话框选择 `.db / .sqlite / .sqlite3` 文件，Rust 端依次校验 SQLite 文件头、`PRAGMA quick_check` 与六张业务表是否存在；通过后先在数据库同目录生成 `knowledge_graph-before-restore-<时间>.db` 安全副本，再替换当前数据库并重放幂等迁移，最后返回恢复后的数据库信息与安全副本路径；
+- 恢复成功后界面提示结果并自动重新加载应用，确保所有页面读取恢复后的数据；恢复失败会尽量回滚到恢复前的安全副本；
+- 「全局搜索」卡片提供 Ctrl + K 快捷键说明与打开入口；「关于」展示应用名称、版本、开发阶段、技术栈与数据存储方式。
+
 ## 后端命令
 
 为支撑各模块的真实数据读写，当前注册的命令如下（数据库结构由 `001_initial.sql` + `002_relations.sql` 两个迁移维护）：
@@ -272,8 +337,11 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 | 关联 | `list_relations` / `list_relation_details` / `list_relation_details_for_point` / `list_relation_details_by_course` / `create_relation` / `update_relation` / `delete_relation` |
 | 关联类型 | `list_relation_types` / `create_relation_type` / `update_relation_type` / `delete_relation_type` |
 | 关联建议 | `generate_relation_suggestions` / `list_relation_suggestions` / `accept_relation_suggestion` / `reject_relation_suggestion` |
+| 首页 | `get_dashboard_overview` |
+| 全局搜索 | `global_search` |
+| 数据库 | `get_database_info` / `backup_database` / `restore_database` |
 
-课程、知识点、笔记、标签与关联命令均具备完整 CRUD、后端校验与所需的事务 / 约束处理。
+课程、知识点、笔记、标签与关联命令均具备完整 CRUD、后端校验与所需的事务 / 约束处理。知识图谱复用 `get_knowledge_point_tree`、`list_relation_details_by_course` 与 `list_relation_types`；首页与全局搜索复用现有业务表，通过聚合查询与共享的文本 / 层级路径工具实现；数据库备份与恢复使用 rusqlite 连接与标准文件操作完成。阶段八未新增数据库迁移。
 
 > Markdown 导入 / 导出使用 `tauri-plugin-dialog` 调用系统文件选择框，权限为 `src-tauri/capabilities/default.json` 中的 `dialog:default`；文件读写本身由 Rust 命令完成，不依赖前端文件系统插件。
 
@@ -282,6 +350,7 @@ Markdown 由已安装的 markdown-it 渲染（禁用内联 HTML），标题、�
 - 位置：Tauri `app_data_dir()` 下的 `knowledge_graph.db`（Windows 一般为 `%APPDATA%\<应用标识>\knowledge_graph.db`）。
 - 启动时由 `db::initialize_database()` 按顺序执行 `migrations/001_initial.sql` 与 `migrations/002_relations.sql`，并开启外键约束；迁移均使用 `IF NOT EXISTS` / `INSERT OR IGNORE`，可安全重放。
 - `knowledge_relations` 通过 `CHECK (source_id <> target_id)` 与 `UNIQUE (source_id, target_id, relation_type)` 在数据库层阻止自关联和重复关联；`relation_types` 维护类型名称、颜色、是否有向；`relation_suggestions` 以无序知识点对唯一保存建议状态（pending / accepted / rejected）。
+- 设置页的备份使用 SQLite `VACUUM INTO` 生成一致的数据库副本；恢复前会在数据库同目录保留 `knowledge_graph-before-restore-*.db` 安全副本，恢复文件名与路径由用户通过系统对话框选择。
 - 时间字段统一以 ISO 8601 字符串存储；前端 `types` 中的字段名与表结构、Rust serde 输出保持一致（snake_case）。
 
 ## 开发约定

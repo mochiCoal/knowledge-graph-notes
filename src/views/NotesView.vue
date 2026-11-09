@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NoteMetaPanel from '@/components/notes/NoteMetaPanel.vue'
 import NoteWorkspace from '@/components/notes/NoteWorkspace.vue'
@@ -26,6 +26,18 @@ onMounted(async () => {
     await notes.selectPoint(pointId)
   }
 })
+
+// 全局搜索等入口在笔记页内跳转到另一个知识点时，路由复用组件，
+// 需要监听 query 变化并切换当前笔记。
+watch(
+  () => route.query.point,
+  (value) => {
+    const pointId = typeof value === 'string' ? value : ''
+    if (pointId && pointId !== notes.selectedPointId) {
+      void notes.selectPoint(pointId)
+    }
+  },
+)
 
 onBeforeUnmount(() => {
   // 离开笔记页前把未保存的草稿落盘

@@ -49,6 +49,12 @@ export const ICON_PATHS = {
   tag: '<path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   link: '<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  database:
+    '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+  folder:
+    '<path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>',
+  check: '<path d="m5 12 4.5 4.5L19 7"/>',
   sparkles:
     '<path d="m12 3 1.9 4.7 4.6 1.8-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.8Z"/><path d="M19 15.5 19.9 18l2.1.8-2.1.9-.9 2.3-.9-2.3-2.1-.9 2.1-.8Z"/>',
 } as const

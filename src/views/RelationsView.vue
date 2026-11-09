@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -57,6 +57,30 @@ const activeTypeUsage = computed(
 onMounted(() => {
   void store.initialize(queryCourseId, queryPointId)
 })
+
+// 全局搜索等入口在知识关联页内跳转到另一个知识点时，路由复用组件，
+// 需要监听 query 变化并同步选中状态。
+watch(
+  () => [route.query.course, route.query.point] as const,
+  ([course, point]) => {
+    if (!store.initialized) return
+
+    const courseId = typeof course === 'string' && course ? course : null
+    const pointId = typeof point === 'string' && point ? point : null
+    if (!courseId && !pointId) return
+
+    if (courseId) {
+      if (courseId !== store.selectedCourseId || (pointId && pointId !== store.selectedPointId)) {
+        void store.selectCourse(courseId, pointId)
+      }
+      return
+    }
+
+    if (pointId && pointId !== store.selectedPointId) {
+      void store.selectPoint(pointId)
+    }
+  },
+)
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)

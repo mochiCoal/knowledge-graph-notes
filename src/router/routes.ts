@@ -68,7 +68,7 @@ export const routes: RouteRecordRaw[] = [
     path: '/graph',
     name: 'graph',
     component: () => import('@/views/GraphView.vue'),
-    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 8 },
+    meta: { title: '知识图谱', icon: 'graph', nav: true, order: 8, immersive: true },
   },
   {
     path: '/settings',
