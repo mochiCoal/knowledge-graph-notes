@@ -248,13 +248,16 @@ watch(
           层级连线
         </label>
 
-        <label class="toolbar-toggle">
+        <label
+          class="toolbar-toggle"
+          title="关闭时只显示选中节点的一跳关系标签，勾选后显示全部标签"
+        >
           <input
             type="checkbox"
             :checked="store.showEdgeLabels"
             @change="store.setShowEdgeLabels(($event.target as HTMLInputElement).checked)"
           />
-          关系标签
+          全部标签
         </label>
       </section>
 

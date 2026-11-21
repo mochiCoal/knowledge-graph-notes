@@ -4,6 +4,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import CourseFormDialog from '@/components/courses/CourseFormDialog.vue'
+import { exportCoursePackage, importCoursePackage } from '@/services/courseTransfer'
 import { useCoursesStore } from '@/stores/courses'
 import type { Course } from '@/types'
 import { formatDateTime } from '@/utils/format'
@@ -15,6 +16,9 @@ const editingCourse = ref<Course | null>(null)
 const pendingDelete = ref<Course | null>(null)
 const deleting = ref(false)
 const actionError = ref<string | null>(null)
+const actionNotice = ref<string | null>(null)
+const exportingId = ref<string | null>(null)
+const importing = ref(false)
 
 const deleteMessage = computed(() => {
   const target = pendingDelete.value
@@ -83,6 +87,56 @@ async function confirmDelete(): Promise<void> {
     deleting.value = false
   }
 }
+
+/** 导出单门课程为 JSON 课程包（含知识点、笔记、标签与课程内关联） */
+async function exportCourse(course: Course): Promise<void> {
+  if (exportingId.value) return
+
+  exportingId.value = course.id
+  actionError.value = null
+  actionNotice.value = null
+
+  try {
+    const result = await exportCoursePackage(course)
+    if (!result) return
+
+    actionNotice.value =
+      `已导出「${result.course_name}」：${result.knowledge_point_count} 个知识点、` +
+      `${result.note_count} 条笔记、${result.relation_count} 条关联，` +
+      `文件保存到 ${result.path}`
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    exportingId.value = null
+  }
+}
+
+/** 选择课程包导入；同名课程由后端自动重命名 */
+async function importCourse(): Promise<void> {
+  if (importing.value) return
+
+  importing.value = true
+  actionError.value = null
+  actionNotice.value = null
+
+  try {
+    const result = await importCoursePackage()
+    if (!result) return
+
+    actionNotice.value =
+      (result.renamed
+        ? `已导入课程「${result.course_name}」（已存在同名课程，名称已自动调整）。`
+        : `已导入课程「${result.course_name}」。`) +
+      `包含 ${result.knowledge_point_count} 个知识点、${result.note_count} 条笔记、` +
+      `${result.relation_count} 条关联、${result.tag_count} 个标签。`
+
+    await courses.fetchCourses(true)
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    importing.value = false
+  }
+}
 </script>
 
 <template>
@@ -92,12 +146,22 @@ async function confirmDelete(): Promise<void> {
       description="课程是知识点与笔记的组织入口，在这里完成课程的增删改查。"
     >
       <template #actions>
+        <button type="button" class="ghost-button" :disabled="importing" @click="importCourse">
+          <AppIcon name="upload" :size="15" />
+          {{ importing ? '正在导入…' : '导入课程' }}
+        </button>
         <button type="button" class="primary-button" @click="openCreate">
           <AppIcon name="plus" :size="16" />
           新建课程
         </button>
       </template>
     </PageHeader>
+
+    <div v-if="actionNotice" class="alert-bar alert-bar--success" role="status">
+      <AppIcon name="check" :size="16" />
+      <span>{{ actionNotice }}</span>
+      <button type="button" class="alert-bar__dismiss" @click="actionNotice = null">关闭</button>
+    </div>
 
     <div
       v-if="actionError || (courses.errorMessage && courses.items.length)"
@@ -163,6 +227,16 @@ async function confirmDelete(): Promise<void> {
             </div>
 
             <div class="course-card__actions">
+              <button
+                type="button"
+                class="card-action"
+                title="导出课程包"
+                aria-label="导出课程包"
+                :disabled="exportingId === course.id"
+                @click="exportCourse(course)"
+              >
+                <AppIcon name="download" :size="15" />
+              </button>
               <button
                 type="button"
                 class="card-action"
@@ -446,6 +520,17 @@ async function confirmDelete(): Promise<void> {
   border: none;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.alert-bar--success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+}
+
+.card-action:disabled {
+  cursor: progress;
+  opacity: 0.45;
 }
 
 @media (max-width: 860px) {

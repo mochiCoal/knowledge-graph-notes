@@ -64,6 +64,28 @@ export interface GraphNodeData {
   point: GraphPoint
   /** 参与当前图谱绘制的语义关联数量 */
   relationCount: number
+  /** 选中其他节点时，不在一跳邻域内需要弱化 */
+  dimmed: boolean
+  /** 同名知识点的区分信息（父级标题或序号），无歧义时为 null */
+  scope: string | null
+  /** 完整层级路径，用于悬浮提示 */
+  pathLabel: string
+}
+
+/** 自定义图谱连线的数据 */
+export interface GraphEdgeData {
+  /** 层级边或语义关联边，决定连线样式（虚线 / 实线着色） */
+  kind: 'hierarchy' | 'relation'
+  /** 选中节点的一跳关联：需要加粗并显示标签 */
+  highlighted: boolean
+  /** 不在一跳邻域内需要弱化 */
+  dimmed: boolean
+  /** 当前是否需要渲染关系标签 */
+  labelText?: string
+  /** 同一对节点之间平行边的序号（从 0 开始），用于把多条边分散到不同弧线 */
+  parallelIndex?: number
+  /** 同一对节点之间的平行边总数 */
+  parallelCount?: number
 }
 
 /** 知识点详情面包屑中的单个节点 */
@@ -325,5 +347,30 @@ export interface RestoreResult {
   safety_backup_path: string
   restored_at: string
   database: DatabaseInfo
+}
+
+/** 课程包导出结果（后端 `export_course_package` 返回） */
+export interface CourseExportResult {
+  /** 实际写入的课程包文件路径 */
+  path: string
+  course_name: string
+  knowledge_point_count: number
+  note_count: number
+  relation_count: number
+  tag_count: number
+}
+
+/** 课程包导入结果（后端 `import_course_package` 返回） */
+export interface CourseImportResult {
+  /** 新课程的 ID，可用于跳转课程详情 */
+  course_id: string
+  /** 实际写入的课程名称（同名时自动追加「（导入）」后缀） */
+  course_name: string
+  /** 课程因重名被自动重命名时为 true */
+  renamed: boolean
+  knowledge_point_count: number
+  note_count: number
+  relation_count: number
+  tag_count: number
 }
 

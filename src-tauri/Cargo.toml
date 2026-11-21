@@ -1,8 +1,8 @@
 [package]
 name = "knowledge-graph-notes"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "1.0.0"
+description = "智能知识点笔记：本地运行的知识点笔记与知识图谱联动桌面应用"
+authors = ["gaotiankai"]
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

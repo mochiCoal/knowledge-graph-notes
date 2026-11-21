@@ -355,6 +355,20 @@ code {
   opacity: 0;
 }
 
+/* 沉浸式页面（笔记 / 知识图谱）：纯淡入淡出，避免位移导致工作区、画布晃动 */
+.page-fade-enter-active {
+  transition: opacity 150ms ease;
+}
+
+.page-fade-leave-active {
+  transition: opacity 90ms ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

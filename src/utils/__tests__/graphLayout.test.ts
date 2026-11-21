@@ -53,6 +53,21 @@ function expectFinitePositions(positions: Map<string, { x: number; y: number }>,
   }
 }
 
+/** 任意两个节点矩形都不允许重叠（允许边缘恰好相接） */
+function expectNoOverlap(positions: Map<string, { x: number; y: number }>, ids: string[]): void {
+  for (let i = 0; i < ids.length; i += 1) {
+    for (let j = i + 1; j < ids.length; j += 1) {
+      const a = positions.get(ids[i])!
+      const b = positions.get(ids[j])!
+      const overlapX =
+        Math.min(a.x + GRAPH_NODE_WIDTH, b.x + GRAPH_NODE_WIDTH) - Math.max(a.x, b.x)
+      const overlapY =
+        Math.min(a.y + GRAPH_NODE_HEIGHT, b.y + GRAPH_NODE_HEIGHT) - Math.max(a.y, b.y)
+      expect(overlapX <= 0 || overlapY <= 0, `节点 ${ids[i]} 与 ${ids[j]} 不应重叠`).toBe(true)
+    }
+  }
+}
+
 describe('layoutHierarchy', () => {
   it('空数据返回空布局', () => {
     expect(layoutHierarchy([]).size).toBe(0)
@@ -68,7 +83,7 @@ describe('layoutHierarchy', () => {
 
     expectFinitePositions(positions, ['root', 'a', 'b', 'a1'])
 
-    const levelGap = GRAPH_NODE_WIDTH + 74
+    const levelGap = GRAPH_NODE_WIDTH + 110
     expect(positions.get('root')!.x).toBe(0)
     expect(positions.get('a')!.x).toBe(levelGap)
     expect(positions.get('b')!.x).toBe(levelGap)
@@ -99,6 +114,25 @@ describe('layoutHierarchy', () => {
   it('重复调用结果一致', () => {
     const points = [point('root'), point('a', 'root'), point('b', 'root')]
     expect(layoutHierarchy(points)).toEqual(layoutHierarchy(points))
+  })
+
+  it('多兄弟与多子树的节点矩形互不重叠（含语义边重心排序）', () => {
+    const points = [
+      point('r1'),
+      point('r2'),
+      point('a', 'r1'),
+      point('b', 'r1'),
+      point('c', 'r1'),
+      point('a1', 'a'),
+      point('a2', 'a'),
+      point('b1', 'b'),
+      point('a1x', 'a1'),
+    ]
+    const ids = points.map((item) => item.id)
+    const positions = layoutHierarchy(points, [relation('a1x', 'b1'), relation('c', 'r2')])
+
+    expectFinitePositions(positions, ids)
+    expectNoOverlap(positions, ids)
   })
 })
 
@@ -145,5 +179,31 @@ describe('layoutForce', () => {
     const positions = layoutForce(points, [relation('a1', 'isolated'), relation('a', 'a')])
 
     expectFinitePositions(positions, ['root', 'a', 'b', 'a1', 'isolated'])
+  })
+
+  it('布局后节点矩形互不重叠', () => {
+    const points = [
+      point('root'),
+      point('a', 'root'),
+      point('b', 'root'),
+      point('c', 'root'),
+      point('a1', 'a'),
+      point('a2', 'a'),
+      point('b1', 'b'),
+      point('free1'),
+      point('free2'),
+      point('free3'),
+    ]
+    const relations = [
+      relation('a1', 'b1'),
+      relation('free1', 'a'),
+      relation('free2', 'c'),
+      relation('a2', 'free3'),
+    ]
+    const ids = points.map((item) => item.id)
+    const positions = layoutForce(points, relations)
+
+    expectFinitePositions(positions, ids)
+    expectNoOverlap(positions, ids)
   })
 })

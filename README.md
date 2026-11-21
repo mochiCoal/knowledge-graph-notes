@@ -55,20 +55,44 @@
   - 首页统计课程 / 知识点 / 笔记 / 标签 / 关联数量，展示最近编辑的笔记与最近创建的知识点
   - 全局搜索面板（顶栏入口 / Ctrl + K）：课程、知识点、笔记、标签与知识点关联分组结果，支持键盘选择与页面跳转
   - 设置页：数据库路径、大小、记录数与 SQLite 版本，数据库备份 / 恢复（恢复前自动生成安全副本），以及关于信息
-- ⏳ 测试与优化（阶段九）、应用打包（阶段十）仍待后续阶段
+- ✅ 阶段九：测试与优化
+  - 后端 73 项、前端 21 项自动化测试，`cargo test` / `npm run test:unit` / `npm run build` 全部通过
+  - 数据库持久化与异常数据测试、弹窗 Esc 交互修复、vendor 分包、数据安全性审计
+- ✅ 阶段十：应用打包与发布
+  - 产品名「智能知识点笔记」，可执行文件 `knowledge-graph-notes.exe`，版本 1.0.0
+  - 全套应用图标（SVG 源图 → ICO / ICNS / PNG / Windows Store 徽标）与前端 favicon
+  - NSIS（当前用户安装，无需管理员）与 MSI（需要管理员权限）安装包
+  - 安装包安装、安装后启动、数据库持久化验证通过，详见[阶段十测试报告](./docs/阶段十测试报告.md)
+  - 面向用户与发布流程的文档：[用户手册](./docs/用户手册.md)、[v1.0.0 发布说明](./docs/发布说明-v1.0.0.md)
 
 完整任务清单见 [task.md](./task.md)。
 
-## 快速开始
+## 本地开发
 
-环境要求：Node.js、Rust stable、Visual Studio 2022 C++ 生成工具（Windows）。
+环境要求：Node.js 20+、Rust stable、Visual Studio 2022 C++ 生成工具（Windows）。
 
 ```bash
-npm install          # 安装前端依赖
-npm run tauri dev    # 启动桌面应用（自动拉起 Vite）
-npm run build        # 仅构建前端（vue-tsc 类型检查 + vite build）
-npm run tauri build  # 打包桌面安装包
+npm install                    # 安装前端依赖
+npm run tauri dev              # 启动桌面应用（自动拉起 Vite）
+npm run build                  # 前端类型检查 + 生产构建
+npm run test:unit              # 前端单元测试（Vitest）
+cargo test --manifest-path src-tauri/Cargo.toml   # 后端测试
+npm run tauri build            # 打包 NSIS + MSI 安装包
 ```
+
+## 安装与发布
+
+v1.0.0 安装包位于 `src-tauri/target/release/bundle/`：
+
+| 安装包 | 文件 | 说明 |
+| --- | --- | --- |
+| NSIS（推荐） | `nsis/智能知识点笔记_1.0.0_x64-setup.exe` | 当前用户安装，默认写入 `%LOCALAPPDATA%\智能知识点笔记`，无需管理员权限 |
+| MSI | `msi/智能知识点笔记_1.0.0_x64_zh-CN.msi` | 面向域 / 企业分发（`ALLUSERS=1`），安装需要管理员权限 |
+
+- 系统要求：Windows 10 1809+ / Windows 11 x64；安装包内置 WebView2 引导安装程序，缺少运行时会在安装阶段自动补齐。
+- 安装包创建开始菜单与桌面快捷方式；卸载入口为「Windows 设置 → 应用 → 智能知识点笔记」，也可运行安装目录下的 `uninstall.exe`。
+- 用户数据与安装目录分离：数据库位于 `%APPDATA%\com.gaotiankai.knowledge-graph-notes\knowledge_graph.db`，卸载不会删除数据，重装后仍可继续使用。
+- 发布前请阅读[v1.0.0 发布说明](./docs/发布说明-v1.0.0.md)；安装、启动与数据持久化的实测结果见[阶段十测试报告](./docs/阶段十测试报告.md)，日常使用见[用户手册](./docs/用户手册.md)。
 
 ## 目录结构
 
@@ -161,7 +185,7 @@ knowledge-graph-notes/
 - 右侧提供最小化、最大化 / 还原、关闭按钮，关闭前会先保存笔记草稿，避免丢失最后几秒的输入；
 - 通过 `WindowResizeHandles` 在窗口四边与四角提供原生缩放（`startResizeDragging`），弥补无边框窗口丢失的默认缩放边框；
 - 标题栏、按钮悬停态、关闭按钮的红色反馈全部使用主题变量，跟随日间 / 夜间 / 自动主题同步变化；
-- 窗口使用 `shadow: false`，避免无边框窗口四周出现透出桌面的透明边框。
+- 窗口使用 `shadow: true`，无边框窗口四周保留系统阴影，与桌面形成层次；`decorations: false` 时由自定义标题栏负责拖动与窗口按钮。
 
 相关文件：`src/components/layout/TitleBar.vue`、`src/components/layout/WindowResizeHandles.vue`；
 窗口权限集中在 `src-tauri/capabilities/default.json`。

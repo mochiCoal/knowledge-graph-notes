@@ -199,6 +199,10 @@ function directionLabel(outgoing: boolean, directed: boolean): string {
               滚轮缩放、拖拽空白平移、拖动节点调整位置；「重新布局」可恢复自动布局。
             </li>
             <li>
+              <AppIcon name="link" :size="13" />
+              选中节点会高亮一跳关联并淡出其余节点；「全部标签」可显示所有关系标签。
+            </li>
+            <li>
               <AppIcon name="sparkles" :size="13" />
               关联类型与知识点内容来自本地 SQLite，筛选只影响当前视图。
             </li>

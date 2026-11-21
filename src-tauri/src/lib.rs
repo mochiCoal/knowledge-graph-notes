@@ -26,6 +26,8 @@ pub fn run() {
             commands::course::create_course,
             commands::course::update_course,
             commands::course::delete_course,
+            commands::course_transfer::export_course_package,
+            commands::course_transfer::import_course_package,
             commands::knowledge_point::list_knowledge_points,
             commands::knowledge_point::list_knowledge_points_by_course,
             commands::knowledge_point::get_knowledge_point_tree,

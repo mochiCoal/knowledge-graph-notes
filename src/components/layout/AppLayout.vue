@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
@@ -12,11 +12,14 @@ const contentRef = ref<HTMLElement | null>(null)
 
 const isImmersive = computed(() => route.meta.immersive === true)
 
+/** 页面过渡名称：沉浸式工作区使用纯淡入淡出，其余页面保留轻微位移 */
+const transitionName = ref(isImmersive.value ? 'page-fade' : 'page')
+
 /**
  * 实际生效的沉浸式布局。
  *
- * 路由变化时如果立刻切换 padding / 侧边栏，正在淡出的旧页面会突然收缩，
- * 因此这里把布局切换推迟到旧页面离场之后、新页面以 opacity: 0 插入的瞬间。
+ * 内容区 padding / 最大宽度在旧页面完全离场后再切换（before-enter），
+ * 避免正在淡出的旧页面突然收缩，也保证新页面一入场就是最终布局。
  */
 const appliedImmersive = ref(isImmersive.value)
 
@@ -26,10 +29,11 @@ const appliedImmersive = ref(isImmersive.value)
  */
 let sidebarBeforeImmersive: boolean | null = null
 
-function applyRouteLayout(): void {
-  const immersive = isImmersive.value
-  appliedImmersive.value = immersive
-
+/**
+ * 路由一变化就同步侧边栏，让收起 / 展开动画与旧页面离场并行。
+ * 如果等到新页面入场才收起，整个淡入过程中内容宽度都在变化，会明显晃动。
+ */
+function syncSidebar(immersive: boolean): void {
   if (immersive) {
     sidebarBeforeImmersive = appStore.sidebarCollapsed
     appStore.setSidebarCollapsed(true)
@@ -45,10 +49,17 @@ function applyRouteLayout(): void {
 }
 
 // 首屏没有路由过渡，直接应用一次布局
-applyRouteLayout()
+syncSidebar(isImmersive.value)
 
-/** 旧页面已离场：先把滚动位置归零，再让新页面从顶部进入 */
+watch(isImmersive, (immersive, previous) => {
+  // 只要往返涉及沉浸式页面，就用纯淡入淡出，避免工作区 / 画布出现位移
+  transitionName.value = immersive || previous ? 'page-fade' : 'page'
+  syncSidebar(immersive)
+})
+
+/** 旧页面已离场：切换内容区布局并归零滚动位置，再让新页面从顶部进入 */
 function handleBeforeEnter(): void {
+  appliedImmersive.value = isImmersive.value
   contentRef.value?.scrollTo({ top: 0 })
 }
 
@@ -87,12 +98,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', handleGlobalKeydow
           :class="{ 'app-content__inner--flush': appliedImmersive }"
         >
           <RouterView v-slot="{ Component, route: currentRoute }">
-            <Transition
-              name="page"
-              mode="out-in"
-              @before-enter="handleBeforeEnter"
-              @enter="applyRouteLayout"
-            >
+            <Transition :name="transitionName" mode="out-in" @before-enter="handleBeforeEnter">
               <component :is="Component" :key="currentRoute.path" />
             </Transition>
           </RouterView>

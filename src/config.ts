@@ -12,7 +12,7 @@ export const APP_NAME = '智能知识点笔记'
 export const APP_TAGLINE = '课程 · 知识点 · 笔记'
 
 /** 应用版本 */
-export const APP_VERSION = '0.1.0'
+export const APP_VERSION = '1.0.0'
 
 /** 当前开发阶段，随任务清单推进更新 */
-export const DEVELOPMENT_STAGE = '阶段八 · 首页与辅助功能'
+export const DEVELOPMENT_STAGE = '阶段十 · 应用打包与发布'

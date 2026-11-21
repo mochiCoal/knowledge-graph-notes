@@ -13,6 +13,7 @@
 
 pub mod backup;
 pub mod course;
+pub mod course_transfer;
 pub mod dashboard;
 pub mod knowledge_point;
 pub mod note;

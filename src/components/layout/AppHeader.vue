@@ -58,15 +58,13 @@ const collapseLabel = computed(() => (sidebarCollapsed.value ? '展开侧边栏'
 
     <button
       type="button"
-      class="search-trigger"
+      class="icon-button"
       :class="{ 'is-active': appStore.searchOpen }"
       aria-label="打开全局搜索"
       title="全局搜索（Ctrl + K）"
       @click="appStore.openSearch()"
     >
-      <AppIcon name="search" :size="15" />
-      <span class="search-trigger__label">搜索</span>
-      <kbd class="search-trigger__kbd">Ctrl K</kbd>
+      <AppIcon name="search" :size="17" />
     </button>
   </header>
 </template>
@@ -111,61 +109,4 @@ const collapseLabel = computed(() => (sidebarCollapsed.value ? '展开侧边栏'
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-
-.search-trigger {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 6px;
-  align-items: center;
-  height: 28px;
-  padding: 0 8px;
-  color: var(--color-text-muted);
-  font-size: 11.5px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  transition:
-    color var(--transition-fast),
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
-}
-
-.search-trigger:hover,
-.search-trigger.is-active {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-
-.search-trigger__label {
-  line-height: 1;
-}
-
-.search-trigger__kbd {
-  display: inline-grid;
-  height: 17px;
-  padding: 0 4px;
-  place-items: center;
-  color: var(--color-text-muted);
-  font-family: var(--font-sans);
-  font-size: 9.5px;
-  line-height: 1;
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-}
-
-@media (max-width: 720px) {
-  .search-trigger__label,
-  .search-trigger__kbd {
-    display: none;
-  }
-
-  .search-trigger {
-    width: 30px;
-    padding: 0;
-    justify-content: center;
-  }
-}
-
 </style>

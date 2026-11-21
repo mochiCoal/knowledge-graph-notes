@@ -61,7 +61,8 @@ export const useGraphStore = defineStore('graph', () => {
   const maxDepth = ref<number | null>(null)
   const layout = ref<GraphLayoutMode>('hierarchy')
   const showHierarchyEdges = ref(true)
-  const showEdgeLabels = ref(true)
+  // 默认只显示选中节点的一跳关系标签，避免标签在交叉处堆叠
+  const showEdgeLabels = ref(false)
 
   const isLoading = ref(false)
   const isLoadingCourse = ref(false)

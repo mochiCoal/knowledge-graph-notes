@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "knowledge-graph-notes",
-  "version": "0.1.0",
+  "productName": "智能知识点笔记",
+  "mainBinaryName": "knowledge-graph-notes",
+  "version": "1.0.0",
   "identifier": "com.gaotiankai.knowledge-graph-notes",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -29,13 +30,34 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
+    "publisher": "gaotiankai",
+    "copyright": "Copyright © 2026 gaotiankai",
+    "category": "Education",
+    "shortDescription": "课程、知识点、Markdown 笔记与知识图谱联动的本地桌面知识管理工具",
+    "longDescription": "智能知识点笔记：创建课程，把课程内容拆分为多级知识点，为知识点编写 Markdown 笔记，建立知识点之间的关联，并以知识图谱展示课程知识结构。所有数据保存在本地 SQLite 数据库中，无需联网。",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "allowDowngrades": true,
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      },
+      "wix": {
+        "language": ["zh-CN", "en-US"],
+        "upgradeCode": "fea5ef73-e38d-45c7-a3b3-2ae24dd22237"
+      }
+    }
   }
 }

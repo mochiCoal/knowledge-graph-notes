@@ -5,6 +5,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import CourseFormDialog from '@/components/courses/CourseFormDialog.vue'
+import { exportCoursePackage } from '@/services/courseTransfer'
 import { notesApi } from '@/services/notes'
 import { useCoursesStore } from '@/stores/courses'
 import type { Course, KnowledgePoint } from '@/types'
@@ -33,6 +34,8 @@ const actionError = ref<string | null>(null)
 const formOpen = ref(false)
 const deleteOpen = ref(false)
 const deleting = ref(false)
+const exporting = ref(false)
+const actionNotice = ref<string | null>(null)
 
 const deleteMessage = computed(() => {
   if (!course.value) return ''
@@ -149,6 +152,30 @@ async function confirmDelete(): Promise<void> {
     deleting.value = false
   }
 }
+
+/** 导出当前课程为 JSON 课程包 */
+async function exportCurrentCourse(): Promise<void> {
+  const target = course.value
+  if (!target || exporting.value) return
+
+  exporting.value = true
+  actionError.value = null
+  actionNotice.value = null
+
+  try {
+    const result = await exportCoursePackage(target)
+    if (!result) return
+
+    actionNotice.value =
+      `已导出「${result.course_name}」：${result.knowledge_point_count} 个知识点、` +
+      `${result.note_count} 条笔记、${result.relation_count} 条关联，` +
+      `文件保存到 ${result.path}`
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -159,6 +186,16 @@ async function confirmDelete(): Promise<void> {
     >
       <template #actions>
         <RouterLink to="/courses" class="ghost-button">返回列表</RouterLink>
+        <button
+          v-if="course"
+          type="button"
+          class="ghost-button"
+          :disabled="exporting"
+          @click="exportCurrentCourse"
+        >
+          <AppIcon name="download" :size="15" />
+          {{ exporting ? '正在导出…' : '导出课程包' }}
+        </button>
         <button v-if="course" type="button" class="ghost-button" @click="formOpen = true">
           <AppIcon name="pencil" :size="15" />
           编辑
@@ -169,6 +206,12 @@ async function confirmDelete(): Promise<void> {
         </button>
       </template>
     </PageHeader>
+
+    <div v-if="actionNotice" class="alert-bar alert-bar--success" role="status">
+      <AppIcon name="check" :size="16" />
+      <span>{{ actionNotice }}</span>
+      <button type="button" class="alert-bar__dismiss" @click="actionNotice = null">关闭</button>
+    </div>
 
     <div v-if="actionError" class="alert-bar" role="alert">
       <AppIcon name="alert" :size="16" />
@@ -661,5 +704,11 @@ async function confirmDelete(): Promise<void> {
   border: none;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.alert-bar--success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
 }
 </style>
