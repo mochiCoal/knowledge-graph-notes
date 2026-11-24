@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
-import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/config'
+import { APP_VERSION } from '@/config'
 import { navItems } from '@/router/navigation'
 import { useAppStore } from '@/stores/app'
 
@@ -19,16 +19,6 @@ function isActive(path: string): boolean {
 
 <template>
   <aside class="sidebar" :class="{ 'is-collapsed': sidebarCollapsed }">
-    <div class="sidebar__brand">
-      <span class="sidebar__mark">
-        <AppIcon name="graph" :size="20" />
-      </span>
-      <div class="sidebar__brand-text">
-        <strong>{{ APP_NAME }}</strong>
-        <span>{{ APP_TAGLINE }}</span>
-      </div>
-    </div>
-
     <nav class="sidebar__nav" aria-label="主导航">
       <RouterLink
         v-for="item in navItems"
@@ -75,53 +65,12 @@ function isActive(path: string): boolean {
   padding-left: 12px;
 }
 
-.sidebar__brand {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 2px 6px 20px;
-}
-
-.sidebar__mark {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  color: var(--color-primary-contrast);
-  background: var(--color-primary);
-  border-radius: 7px;
-}
-
-.sidebar__brand-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.35;
-}
-
-.sidebar__brand-text strong {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.sidebar__brand-text span {
-  overflow: hidden;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .sidebar__nav {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 4px;
+  padding-top: 4px;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -192,13 +141,6 @@ function isActive(path: string): boolean {
 }
 
 /* 折叠状态：隐藏文字，图标居中显示 */
-.is-collapsed .sidebar__brand {
-  justify-content: center;
-  padding-right: 0;
-  padding-left: 0;
-}
-
-.is-collapsed .sidebar__brand-text,
 .is-collapsed .nav-item__label,
 .is-collapsed .sidebar__footer-text {
   display: none;

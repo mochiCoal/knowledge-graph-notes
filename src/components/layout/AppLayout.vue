@@ -23,38 +23,9 @@ const transitionName = ref(isImmersive.value ? 'page-fade' : 'page')
  */
 const appliedImmersive = ref(isImmersive.value)
 
-/**
- * 笔记页等沉浸式页面默认收起应用级导航，把宽度留给三栏工作区。
- * 离开时恢复进入前的状态；如果用户手动展开过，则尊重用户的选择。
- */
-let sidebarBeforeImmersive: boolean | null = null
-
-/**
- * 路由一变化就同步侧边栏，让收起 / 展开动画与旧页面离场并行。
- * 如果等到新页面入场才收起，整个淡入过程中内容宽度都在变化，会明显晃动。
- */
-function syncSidebar(immersive: boolean): void {
-  if (immersive) {
-    sidebarBeforeImmersive = appStore.sidebarCollapsed
-    appStore.setSidebarCollapsed(true)
-    return
-  }
-
-  if (sidebarBeforeImmersive === null) return
-
-  if (appStore.sidebarCollapsed) {
-    appStore.setSidebarCollapsed(sidebarBeforeImmersive)
-  }
-  sidebarBeforeImmersive = null
-}
-
-// 首屏没有路由过渡，直接应用一次布局
-syncSidebar(isImmersive.value)
-
 watch(isImmersive, (immersive, previous) => {
   // 只要往返涉及沉浸式页面，就用纯淡入淡出，避免工作区 / 画布出现位移
   transitionName.value = immersive || previous ? 'page-fade' : 'page'
-  syncSidebar(immersive)
 })
 
 /** 旧页面已离场：切换内容区布局并归零滚动位置，再让新页面从顶部进入 */

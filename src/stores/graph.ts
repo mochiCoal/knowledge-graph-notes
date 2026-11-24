@@ -225,8 +225,9 @@ export const useGraphStore = defineStore('graph', () => {
       applyTypes(typeData)
       if (resetFilters) maxDepth.value = null
 
-      const points = flattenTree(treeData)
-      selectedPointId.value = points[0]?.id ?? null
+      // 初始不选中任何节点：自动选中会触发画布的一跳邻域聚焦，
+      // 导致其余节点在用户尚未操作时就被弱化（灰显）
+      selectedPointId.value = null
     } catch (error) {
       errorMessage.value = errorText(error)
       tree.value = []
@@ -328,7 +329,8 @@ export const useGraphStore = defineStore('graph', () => {
       if (previousVisible) {
         selectedPointId.value = previousSelected
       } else {
-        selectedPointId.value = visiblePoints.value[0]?.id ?? null
+        // 选中项已不可见时清空即可，不要回退为自动选中第一个节点（会触发灰显聚焦）
+        selectedPointId.value = null
       }
     } catch (error) {
       errorMessage.value = errorText(error)
@@ -358,7 +360,7 @@ export const useGraphStore = defineStore('graph', () => {
 
     const current = selectedPoint.value
     if (current && value !== null && current.depth > value) {
-      selectedPointId.value = visiblePoints.value[0]?.id ?? null
+      selectedPointId.value = null
     }
   }
 
